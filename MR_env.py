@@ -2,14 +2,12 @@
 #-*- coding: utf-8 -*-
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from gym import Env, spaces
-from matplotlib import animation
 
 from MR_viewer import Viewer
-from MR_data import MRExperiment
 from MR_simulator import Simulator
+from plot_utils import save_frames_as_gif
 
 from typing import Tuple
 """
@@ -18,12 +16,17 @@ TODO :
 - 
 
 """
+
+REWARD_SUCCESS = 100
+REWARD_FAILURE = -100
+REWARD_STEP = -0.1
+
 class MR_Env(Env):
     def __init__(
-                self, 
-                type='continuous', 
-                action_dim = 2
-                ):
+        self, 
+        type='continuous', 
+        action_dim = 2
+        ):
 
         self.type = type
         self.action_dim = action_dim
@@ -51,9 +54,9 @@ class MR_Env(Env):
 
         self.simulator = Simulator()
         
-        # self.init_test_performance = np.linspace(0, np.pi / 15, 10)
         self.test_performance = False
         self.last_pos = np.zeros(2)
+        # TODO: Why init_goal and not just goal?
         self.init_goal = np.zeros(2)
         self.last_action = np.zeros(self.action_dim)
         
@@ -68,78 +71,92 @@ class MR_Env(Env):
         self.state_prime = None
 
     def step(
-            self, 
-            action: Tuple[float, float]
-            ) -> Tuple[Tuple[float, float, float, float, float], float, bool, dict]:
+        self, 
+        f_t: float,
+        alpha_t: float
+        ) -> Tuple[Tuple[float, float, float, float, float], float, bool, dict]:
         """
-        Returns:
-            obs (object): an environment-specific object representing your observation of the environment: [x, y, x_target, y_target, distance to target]
+        This method is used to take a step in the environment and to update the states
+        Input:
+            f_t: frequency of the magnetic field
+            alpha_t: yaw angle of the robot
+        Output:
             done (boolean): whether it’s time to reset the environment again.
         """
         # According to the action stace a different kind of action is selected
         self.counter += 1
-        f_t =  action[0]
-        alpha_t = action[1]
         state = self.simulator.step(f_t, alpha_t)
         self.state_prime = self.simulator.state_prime
 
         # convert simulator states into observable states
-        obs = self.convert_state(state, self.init_goal) 
-        done = self.end(state=state, obs=obs)
-        rew = 10 #self.calculate_reward(obs=obs)
-
+        obs = self.convert_state_to_observable(state, self.init_goal) 
+        
         self.last_pos = [state[0], state[1]]
         self.last_action = np.array([f_t, alpha_t])
 
         if self.MR_data is not None:
+            # TODO: why 10?
+            rew = 10 # self.calculate_reward(obs=obs)
             self.MR_data.new_transition(state, obs, self.last_action, rew)
-        info = dict()
         
-        return obs, rew, done, info
+        done = self.should_end(obs)
+        return done
     
-    def convert_state(
-                    self, 
-                    state: Tuple[float, float], 
-                    goal_loc: Tuple[float, float]
-                    ) -> Tuple[float, float, float, float, float]:
+    def convert_state_to_observable(
+        self, 
+        state: Tuple[float, float], 
+        goal_loc: Tuple[float, float]
+        ) -> Tuple[float, float, float, float, float]:
         """
-        This method generates the features used to build the reward function, converts the current state to the observable state
+        This method generates the features used to build the reward function, 
+            converts the current state to the observable state
+        Input:
+            state (tuple): current state of the robot
+            goal_loc (tuple): goal position
         Returns:
-            obs (object): an environment-specific object representing your observation of the environment: [x, y, x_target, y_target, distance to target]
+            obs (object): an environment-specific object representing 
+                your observation of the environment: [x, y, goal_x, goal_y, distance to target]
         """
         x, y, goal_x, goal_y  = state[0], state[1], goal_loc[0], goal_loc[1]
 
-        cur_loc = np.array((x, y))
-        goal_loc = np.array((goal_x, goal_y))
-        d = np.linalg.norm(goal_loc - cur_loc)
-        obs = np.array([x, y, goal_x, goal_y, d])
-        return obs
+        d = np.linalg.norm([goal_x - x, goal_y - y])
+        return np.array([x, y, goal_x, goal_y, d])
 
     def calculate_reward(
-                        self, 
-                        obs: Tuple[float, float, float, float, float]
-                        ) -> float:
+        self, 
+        obs: Tuple[float, float, float, float, float]
+        ) -> float:
         """
         This method calculates the reward based on the observable state
-        Returns:
-            reward (float) : amount of reward achieved by the previous action
+        TODO: WHY?
+        Input:
+            obs (tuple): observable state
+        Output:
+            rew (float): amount of reward achieved by the previous action
         """
         d = obs[4]
         if d < self.min_dist2goal:
             print("\n ############ Got there ########")
-            return 100
+            return REWARD_SUCCESS
         elif not self.observation_space.contains(obs) or self.counter > self.max_timesteps:
-            return -100
+            return REWARD_FAILURE
         else:
-            return -0.1# self.min_dist2goal/d
+            return REWARD_STEP # self.min_dist2goal/d
 
-    def end(self, state, obs):
+    def should_end(
+        self, 
+        obs: Tuple[float, float, float, float, float]
+        ) -> bool:
         """
-        ? This method finds out whether we are at the end of episode
+        This method finds out whether we are at the end of episode
+        Input:
+            obs (tuple): observable state
+        Output:
+            done (boolean): whether it’s time to reset the environment again.
         """
         d = obs[4]
+        # smashed into a wall or reached to the max timesteps
         if not self.observation_space.contains(obs) or self.counter > self.max_timesteps:
-            # print("\n Smashed on wall")
             if self.viewer is not None:
                 self.viewer.end_episode()
             if self.MR_data is not None:
@@ -151,9 +168,7 @@ class MR_Env(Env):
         else:
             return False
 
-    def set_init_space(self, low, high):
-        self.init_space = spaces.Box(low=np.array(low), high=np.array(high))
-
+    # TODO: What is this????
     def set_goal(self,init):
         # self.init_goal = self.init_goal_space.sample()
         # while np.linalg.norm( self.init_goal - init ) < self.min_dist2goal :
@@ -162,24 +177,25 @@ class MR_Env(Env):
         return self.init_goal
 
     def reset(
-            self, 
-            init: Tuple[float, float] = None, 
-            noise_var = 1, 
-            a0 = 1, 
-            is_mismatched = False
-            ) -> Tuple[float, float, float, float, float]:
+        self, 
+        init: Tuple[float, float] = None, 
+        noise_var = 1, 
+        a0 = 1, 
+        is_mismatched = False
+        ) -> Tuple[float, float, float, float, float]:
 
         if init is None: 
             init = self.init_space.sample()
             
         print("starting positions")
         print(init.shape)
+        # TODO: Check this function?
         self.set_goal(init)
         
         self.simulator.noise_var = noise_var
         self.simulator.a0 = a0
         self.simulator.reset_start_pos(init)
-        self.goal_loc = self.init_space.sample()
+        self.init_goal = self.init_space.sample()
         self.simulator.is_mismatched = is_mismatched
         
         self.last_pos = init
@@ -192,15 +208,15 @@ class MR_Env(Env):
                 self.MR_data.save_experiment(self.name_experiment)
             self.MR_data.new_iter(
                                 state, 
-                                self.convert_state(state, self.init_goal), 
+                                self.convert_state_to_observable(state, self.init_goal), 
                                 np.zeros(len(self.last_action)), 
                                 np.array([0])
                                 )
         if self.viewer is not None:
             self.viewer.end_episode()
-        return self.convert_state(state, self.init_goal)
+        return self.convert_state_to_observable(state, self.init_goal)
 
-    def render(self, mode='human'):
+    def render(self):
         if self.viewer is None:
             self.viewer = Viewer()
             self.viewer.plot_boundary(self.borders)
@@ -216,32 +232,9 @@ class MR_Env(Env):
             self.viewer.end_episode()
             self.viewer.restart_plot()
 
-
     def close(self, ):
         self.viewer.freeze_scream()
 
-    def set_save_experice(self, name='experiment_ssn_ddpg_10iter'):
-        assert type(name) == type(""), 'name must be a string'
-        self.MR_data = MRExperiment()
-        self.name_experiment = name
-
-    def set_test_performace(self):
-        self.test_performance = True
-
-
-def save_frames_as_gif(frames, path='./', filename='gym_animation.gif'):
-
-        #Mess with this to change frame size
-        plt.figure(figsize=(frames[0].shape[1] / 72.0, frames[0].shape[0] / 72.0), dpi=72)
-
-        patch = plt.imshow(frames[0])
-        plt.axis('off')
-
-        def animate(i):
-            patch.set_data(frames[i])
-
-        anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval=50)
-        anim.save(path + filename, writer='imagemagick', fps=60)
 
 if __name__ == '__main__':
     frames = []
@@ -256,10 +249,8 @@ if __name__ == '__main__':
                 frames.append(env.render())
                 # env.render()
                 action = np.array([20, np.pi/4]) # -2*np.pi/(i_episode+1)
-                observation, reward, done, info = env.step(action)
+                done = env.step(action[0], action[1])
                 
-                # print ("observation, reward, done, info \n")
-                # print (observation)
                 if done:
                     print("Episode finished after {} timesteps".format(t + 1))
                     break

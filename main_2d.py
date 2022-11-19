@@ -1,12 +1,7 @@
-
-
-
-
 import numpy as np
-import sys
 import Learning_module_2d as GP # type: ignore
-from utils import readfile, run_sim,test_gp,find_alpha_corrected
-from utils import plot_xy,plot_traj,plot_vel,plot_bounded_curves
+from utils import run_sim, find_alpha_corrected
+from plot_utils import plot_xy, plot_traj, plot_bounded_curves
 from scipy.ndimage import uniform_filter1d
 
 # from MR_experiment import run_exp
@@ -178,7 +173,7 @@ noise_vars= [0.0]
 for i in range(len(noise_vars)):
 
 
-    gp_sim = GP.LearningModule
+    gp_sim = GP.LearningModule()
 
     #first we will do absolutely nothing to try and calculate the drift term
     px_idle,py_idle,alpha_idle,time_idle,freq_idle = run_sim(actions_idle,

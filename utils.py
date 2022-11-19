@@ -97,7 +97,7 @@ def run_sim(
     # states      = np.append(states, env.last_pos, axis=0)
     # state_prime = np.append(state_prime, np.array([0,0]), axis=0)
     for action in actions:
-        env.step(action)
+        env.step(action[0], action[1])
         states      = np.append(states, np.array([env.last_pos]), axis=0)
         state_prime = np.append(state_prime, np.array([env.state_prime]), axis=0)
     X      = states[:,0]
