@@ -100,8 +100,8 @@ def run_sim(
         env.step(action[0], action[1])
         states      = np.append(states, np.array([env.last_pos]), axis=0)
         state_prime = np.append(state_prime, np.array([env.state_prime]), axis=0)
-    X      = states[:,0]
-    Y      = states[:,1]
+    X       = states[:,0]
+    Y       = states[:,1]
     alpha   = actions[:,1]
     freq    = actions[:,0]
     time    = np.linspace(0, (len(X) - 1)/30.0, len(X)) # (np.arange(len(X))) / 30.0 #timestep is 1/30
