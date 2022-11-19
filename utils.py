@@ -11,7 +11,6 @@ import pickle
 from MR_env import MR_Env
 
 
-#helper function to read some existing data
 def readfile(
     filename: str
     ) -> Tuple[

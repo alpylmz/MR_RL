@@ -9,7 +9,7 @@ class Simulator:
     def __init__(self):
         self.last_state = None
         self.current_action = None
-        self.time_span = dt = 0.030 #assume a timestep of 30 ms
+        self.time_span = 0.030 #assume a timestep of 30 ms
         self.number_iterations = 100  #  iterations for each step
         self.integrator = None # 
         ##MR Constants
@@ -19,11 +19,15 @@ class Simulator:
         self.is_mismatched = False
 
     def reset_start_pos(
-                        self, 
-                        state_vector: Tuple[float, float]
-                        ) -> None:
+        self, 
+        state_vector: Tuple[float, float]
+        ) -> None:
         """
         Reset the start position of the simulator
+        It changes the last state of the simulator, 
+        resets the current action, and resets the integrator accordingly
+        Input:
+            state_vector: x and y position
         """  
         x0, y0 = state_vector[0], state_vector[1]
         self.last_state = np.array([x0, y0])
@@ -34,10 +38,21 @@ class Simulator:
                                             t_bound = self.time_span)
 
     def step(
-            self, 
-            f_t: float, 
-            alpha_t: float
-            ) -> Tuple[float, float]:
+        self, 
+        f_t: float, 
+        alpha_t: float
+        ) -> Tuple[
+            float, 
+            float,
+        ]:
+        """
+        Step the simulator forward by one timestep
+        Input:
+            f_t: the frequency of the magnetic field
+            alpha_t: the yaw angle of the robot
+        Output:
+            last_state: the new state of the robot, x and y position
+        """
         self.current_action = np.array([f_t, alpha_t])
         while not (self.integrator.status == 'finished'):
             self.integrator.step()
@@ -52,45 +67,79 @@ class Simulator:
         return self.last_state
 
 
-    def a0_linear(self, alpha_t, f_t, sigma):
-        return self.a0 + (f_t/4)*0.8 + np.random.normal(0, sigma, 1)[0]
+    def a0_linear(
+        self, 
+        f_t: float, 
+        sigma: float
+        ) -> float:
+        """
+        It calculates the new a0 value with the following formula:
+        TODO: why 0.2?
+        a0 = a0 + f_t * 0.2 + gaussian_noise(mean = 0, variance = sigma)
+        Input:
+            f_t: the frequency of the magnetic field
+            sigma: the variance of the gaussian noise
+        Output:
+            a0: the new a0 value
+        """
+        return self.a0 + f_t*0.2 + np.random.normal(0, sigma, 1)[0]
 
     def simulate(
-                self, 
-                t, 
-                states: Tuple[float, float]
-                ) -> Tuple[float, float]:
+        self, 
+        t, 
+        states: Tuple[float, float]
+        ) -> Tuple[float, float]:
         """
-        :param states: Space state
-        :return df_states
+        It calculates the derivative for the current state, but it does not update the state!
+        Input:
+            t: the current time(not used in this function)
+            states: the current state of the robot, x and y position(again not used in this function)
+        Output:
+            state_prime: the derivative of the state, x and y velocity
         """
-        # print("\n States ",states)
         f_t = self.current_action[0]
         alpha_t = self.current_action[1]    
-        # Derivative function
-
-        # simple model
+        
         mu, sigma = 0, self.noise_var # mean and standard deviation
 
-        #select a value of a0 -- either costant or with model mismatch
+        # get the value of a0 -- either constant or with model mismatch
         a0 = self.a0
         if self.is_mismatched:
-            a0 = self.a0_linear(alpha_t, f_t, sigma/4)
-            dx1 = a0 * f_t  * np.cos(alpha_t + 0.1) + np.random.normal(mu, sigma, 1)[0] + 0.2
-            dx2 = a0 * f_t  * np.sin(alpha_t + 0.1) + np.random.normal(mu, sigma, 1)[0] - 0.1
+            # TODO: why sigma/4?
+            a0 = self.a0_linear(f_t, sigma/4)
+            dx = a0 * f_t  * np.cos(alpha_t + 0.1) + np.random.normal(mu, sigma, 1)[0] + 0.2
+            dy = a0 * f_t  * np.sin(alpha_t + 0.1) + np.random.normal(mu, sigma, 1)[0] - 0.1
         else:
-            dx1 = a0 * f_t  * np.cos(alpha_t) + np.random.normal(mu, sigma, 1)[0] 
-            dx2 = a0 * f_t  * np.sin(alpha_t) + np.random.normal(mu, sigma, 1)[0] 
+            dx = a0 * f_t  * np.cos(alpha_t) + np.random.normal(mu, sigma, 1)[0] 
+            dy = a0 * f_t  * np.sin(alpha_t) + np.random.normal(mu, sigma, 1)[0] 
 
-        # print("\n Actions taken:" , self.current_action)
-        # print("\n np.cos(alpha_t) ",np.cos(alpha_t),"np.sin(alpha_t) ",np.sin(alpha_t))
-        # print("\n dx1: ", dx1 , "dx2: ", dx2)
-        fx = np.array([dx1, dx2])
-        self.state_prime = fx
-        return fx
+        self.state_prime = np.array([dx, dy])
+        return self.state_prime
 
-    def scipy_runge_kutta(self, fun, y0, t0 = 0, t_bound = 10):
-        return RK45(fun, t0, y0, t_bound, rtol = self.time_span/self.number_iterations, atol = 1e-4)
+    def scipy_runge_kutta(
+        self, 
+        fun, 
+        y0, 
+        t0 = 0, 
+        t_bound = 10
+        ) -> RK45:
+        """
+        It creates an integrator for the simulator
+        Input:
+            fun: the function to integrate
+            y0: the initial state
+            t0: the initial time
+            t_bound: the final time
+        Output:
+            integrator: the integrator for the simulator
+        """
+        return RK45(
+            fun, 
+            t0, 
+            y0, 
+            t_bound, 
+            rtol = self.time_span/self.number_iterations, 
+            atol = 1e-4)
 
     def get_state(self):
         return self.last_state
