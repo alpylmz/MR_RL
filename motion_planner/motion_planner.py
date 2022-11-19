@@ -12,26 +12,23 @@ class Node:
     """
     A node in the RRT tree.
     """
-    def __init__(self, x, y, parent):
+    def __init__(self, x, y, parent, cost):
         self.x = x
         self.y = y
         self.parent = parent
-        self.children = []
+        self.cost = cost
 
     def __repr__(self):
         return f"Node({self.x}, {self.y}, {self.parent})"
-
-    def add_child(self, child):
-        self.children.append(child)
-
-    def get_children(self):
-        return self.children
 
     def change_parent(self, new_parent):
         self.parent = new_parent
 
     def get_parent(self):
         return self.parent
+
+    def set_parent(self, parent):
+        self.parent = parent
 
     def get_position(self):
         return self.x, self.y
@@ -71,7 +68,7 @@ class RRT:
             obstacles: A list of obstacles. Currently only rectangles are supported.
                     The tuple is [min_x, min_y, width, height]
         """
-        self.nodes = [Node(start_x, start_y, None)]
+        self.nodes = [Node(start_x, start_y, None, 0)]
         self.start_x = start_x
         self.start_y = start_y
         self.goal_x = goal_x
@@ -140,26 +137,56 @@ class RRT:
             node = node.get_parent()
         return path[::-1]
 
-    def RRTStar(self, plot = True):
+    def RRTStar(self, plot = True, rewire = True, repeat = True):
         """
         Runs the RRT* algorithm.
         """
-        for i in tqdm(range(self.max_iter)):
+        iteration_count = self.max_iter
+        for i in tqdm(range(iteration_count)):
             x, y = self.get_random_point()
             nearest_node = self.get_nearest_node(x, y)
             new_x, new_y = self.get_new_point(nearest_node, x, y)
             if self.intersects_rectangle(nearest_node.x, nearest_node.y, new_x, new_y):
-                self.max_iter += 1 # If the new point intersects an obstacle, try again
+                iteration_count += 1 # If the new point intersects an obstacle, try again
                 continue
-            new_node = Node(new_x, new_y, nearest_node)
-            nearest_node.add_child(new_node)
+            new_node = Node(new_x, new_y, nearest_node, nearest_node.cost + get_distance(nearest_node.x, nearest_node.y, new_x, new_y))
             self.nodes.append(new_node)
             if get_distance(new_x, new_y, self.goal_x, self.goal_y) < self.step_size:
                 path = self.get_path(new_node)
                 if plot:
                     self.plot(path)
                 return path
-            
+            # Rewire
+            if rewire:
+                for node in self.nodes:
+                    if node == new_node:
+                        continue
+                    if get_distance(node.x, node.y, new_x, new_y) < 20 * self.step_size and \
+                        node.cost > new_node.cost + get_distance(node.x, node.y, new_x, new_y):
+                        if self.intersects_rectangle(new_x, new_y, node.x, node.y):
+                            continue
+                        node.set_parent(new_node)
+                        node.cost = new_node.cost + get_distance(node.x, node.y, new_x, new_y)
+                """
+                for node in self.nodes:
+                    if node.parent is None:
+                        continue
+                    # if the node is not closer than 10 * step_size, it can't be rewired
+                    if get_distance(node.parent.x, node.parent.y, new_x, new_y) > 10 * self.step_size:
+                        continue
+                    temp_node_x = node.x
+                    temp_node_y = node.y
+                    # Check if the new node is closer to the node than the node's parent
+                    if get_distance(new_x, new_y, node.get_parent().x, node.get_parent().x) < \
+                        (get_distance(node.get_parent().x, node.get_parent().y, temp_node_x, temp_node_y) \
+                        + get_distance(temp_node_x, temp_node_y, new_x, new_y)):
+                        # Check if the new node can see the parent node
+                        if not self.intersects_rectangle(new_x, new_y, node.get_parent().x, node.get_parent().y):
+                            new_node.parent = node.get_parent()
+                """        
+
+        if repeat:
+            return self.RRTStar()
         if plot:
             self.plot(None)
         return None
@@ -203,8 +230,8 @@ def main():
     start_y = 7.5
     goal_x = 7.5
     goal_y = -7.5
-    step_size = 0.25
-    max_iter = 5000
+    step_size = 0.2
+    max_iter = 10000
     env_min_x = -10
     env_min_y = -10
     env_width = 20
@@ -222,7 +249,7 @@ def main():
         env_height, 
         obstacles)
     
-    path = rrt.RRTStar()
+    path = rrt.RRTStar(rewire = True, repeat = True)
     print(path)
 
 
