@@ -5,8 +5,8 @@
 import numpy as np
 import sys
 import Learning_module as GP # type: ignore
-from utils import readfile, run_sim,test_gp,find_alpha_corrected
-from utils import plot_xy,plot_traj,plot_vel,plot_bounded_curves
+from utils import readfile, run_sim,find_alpha_corrected
+from plot_utils import plot_xy,plot_traj,plot_vel,plot_bounded_curves
 from scipy.ndimage import uniform_filter1d
 
 # from MR_experiment import run_exp
