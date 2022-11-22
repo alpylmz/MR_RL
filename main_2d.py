@@ -12,7 +12,7 @@ MAGNETIC_FIELD_FREQ = 4
 # TODO: How this value is decided?
 A0_DEF = 1.5
 
-def execute_idle_action(gp_sim: GP.LearningModule):
+def execute_idle_action(gp_sim: GP.LearningModule, noise_var = 0.0):
     """
     Execute the idle action to learn about the noise
     Input:
@@ -27,7 +27,7 @@ def execute_idle_action(gp_sim: GP.LearningModule):
     px_idle, py_idle, alpha_idle, time_idle, freq_idle = run_sim(
                                                             actions_idle,
                                                             init_pos = np.array([0, 0]),
-                                                            noise_var = 0.0,
+                                                            noise_var = noise_var,
                                                             a0 = A0_DEF,
                                                             is_mismatched = True
                                                             )
@@ -35,7 +35,7 @@ def execute_idle_action(gp_sim: GP.LearningModule):
     gp_sim.estimateDisturbance(px_idle, py_idle, time_idle)
 
 
-def execute_learn_action(gp_sim: GP.LearningModule, plot = True):
+def execute_learn_action(gp_sim: GP.LearningModule, noise_var = 0.0, plot = True):
     """
     Execute the learn action to learn about the noise
     Input:
@@ -61,14 +61,14 @@ def execute_learn_action(gp_sim: GP.LearningModule, plot = True):
     t = np.linspace(0, step_count, step_count)
 
     # TODO: why?
-    actions_learn[:,0] = (np.cos(t / 5) + 1)/2 * 4.9 + 0.1
+    #actions_learn[:,0] = (np.cos(t / 5) + 1)/2 * 4.9 + 0.1
     
     
     # THIS IS WHAT THE SIMULATION ACTUALLY GIVES US -- model mismatch && noise
     x_sim, y_sim, alpha_sim, time_sim, freq_sim = run_sim(
                                                         actions_learn,
                                                         init_pos = np.array([0, 0]),
-                                                        noise_var = 0.0,
+                                                        noise_var = noise_var,
                                                         a0 = A0_DEF,
                                                         is_mismatched = True
                                                         )
