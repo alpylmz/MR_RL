@@ -74,7 +74,7 @@ class MR_Env(Env):
         self, 
         f_t: float,
         alpha_t: float
-        ) -> Tuple[Tuple[float, float, float, float, float], float, bool, dict]:
+        ) -> bool:
         """
         This method is used to take a step in the environment and to update the states
         Input:

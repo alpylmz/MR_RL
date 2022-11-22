@@ -5,7 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib import patches
 
-from utils import get_distance, intersect
+from .utils import get_distance, intersect
 
 
 class Node:
@@ -137,12 +137,12 @@ class RRT:
             node = node.get_parent()
         return path[::-1]
 
-    def RRTStar(self, plot = True, rewire = True, repeat = True):
+    def RRTStar(self, plot = True, rewire = True, repeat = True, plot_only_path = True):
         """
         Runs the RRT* algorithm.
         """
         iteration_count = self.max_iter
-        for i in tqdm(range(iteration_count)):
+        for _ in tqdm(range(iteration_count)):
             x, y = self.get_random_point()
             nearest_node = self.get_nearest_node(x, y)
             new_x, new_y = self.get_new_point(nearest_node, x, y)
@@ -154,7 +154,7 @@ class RRT:
             if get_distance(new_x, new_y, self.goal_x, self.goal_y) < self.step_size:
                 path = self.get_path(new_node)
                 if plot:
-                    self.plot(path)
+                    self.plot(path, plot_only_path)
                 return path
             # Rewire
             if rewire:
@@ -166,32 +166,17 @@ class RRT:
                         if self.intersects_rectangle(new_x, new_y, node.x, node.y):
                             continue
                         node.set_parent(new_node)
-                        node.cost = new_node.cost + get_distance(node.x, node.y, new_x, new_y)
-                """
-                for node in self.nodes:
-                    if node.parent is None:
-                        continue
-                    # if the node is not closer than 10 * step_size, it can't be rewired
-                    if get_distance(node.parent.x, node.parent.y, new_x, new_y) > 10 * self.step_size:
-                        continue
-                    temp_node_x = node.x
-                    temp_node_y = node.y
-                    # Check if the new node is closer to the node than the node's parent
-                    if get_distance(new_x, new_y, node.get_parent().x, node.get_parent().x) < \
-                        (get_distance(node.get_parent().x, node.get_parent().y, temp_node_x, temp_node_y) \
-                        + get_distance(temp_node_x, temp_node_y, new_x, new_y)):
-                        # Check if the new node can see the parent node
-                        if not self.intersects_rectangle(new_x, new_y, node.get_parent().x, node.get_parent().y):
-                            new_node.parent = node.get_parent()
-                """        
+                        node.cost = new_node.cost + get_distance(node.x, node.y, new_x, new_y)      
 
         if repeat:
+            # delete all nodes except first one
+            self.nodes = self.nodes[:1]
             return self.RRTStar()
         if plot:
             self.plot(None)
         return None
 
-    def plot(self, path):
+    def plot(self, path, plot_only_path = True):
         """
         Plots the environment and the path.
         """
@@ -204,16 +189,17 @@ class RRT:
         ax.scatter(self.goal_x, self.goal_y, c='r', s=50)
 
         # print all nodes
-        for node in self.nodes:
-            if node.parent is not None:
-                ax.plot([node.x, node.parent.x], [node.y, node.parent.y], c='b')
+        if not plot_only_path:
+            for node in self.nodes:
+                if node.parent is not None:
+                    ax.plot([node.x, node.parent.x], [node.y, node.parent.y], c='b')
 
         for obstacle in self.obstacles:
             # draw red rectangle
             ax.add_patch(patches.Rectangle((obstacle[0], obstacle[1]), obstacle[2], obstacle[3], color='r'))
         if path is not None:
             x, y = zip(*path)
-            ax.plot(x, y, color="red")
+            ax.plot(x, y, color="black")
             ax.scatter(self.start_x, self.start_y, color="green")
             ax.scatter(self.goal_x, self.goal_y, color="green")
             plt.show()
@@ -231,7 +217,7 @@ def main():
     goal_x = 7.5
     goal_y = -7.5
     step_size = 0.2
-    max_iter = 10000
+    max_iter = 2000
     env_min_x = -10
     env_min_y = -10
     env_width = 20
@@ -249,7 +235,7 @@ def main():
         env_height, 
         obstacles)
     
-    path = rrt.RRTStar(rewire = True, repeat = True)
+    path = rrt.RRTStar(rewire = True, repeat = True, plot_only_path = True)
     print(path)
 
 
