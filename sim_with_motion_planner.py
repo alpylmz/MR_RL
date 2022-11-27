@@ -88,9 +88,28 @@ def mpc_controller(init_state, path, gp_sim, env, obstacles):
     """
     Implements model predictive controller
     """
-    pass
+    executed_path = [init_state]
+    curr_state = init_state
 
+    
 
+    return executed_path
+
+def path_cost_calculator(desired_path, executed_path):
+    """
+    Calculates the cost of the path
+    """
+    cost = 0
+    desired_path_index = 0
+
+    for point in executed_path:
+        # find the distance between the point and the desired_path[desired_path_index] - desired_path[desired_path_index + 1]
+        # if the distance is less than ACCEPTED_DISTANCE, then increase the desired_path_index
+        # if the distance is more than ACCEPTED_DISTANCE, then add the distance to the cost
+        
+        pass
+
+    return cost
 
 def main():
     gp_sim = GP.LearningModule()
