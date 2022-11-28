@@ -4,6 +4,7 @@ import enum
 from main_2d import execute_idle_action, execute_learn_action
 import Learning_module_2d as GP
 from motion_planner.motion_planner import RRT
+from mpc import run_once
 
 from MR_env import MR_Env
 from utils import find_alpha_corrected
@@ -19,7 +20,7 @@ SIMULATION_FREQ_HZ = 30
 MAGNETIC_FIELD_FREQ = 2
 ACCEPTED_DISTANCE = 0.2
 NOISE = 0.0
-CONTROLLER_TYPE = ControllerType.P
+CONTROLLER_TYPE = ControllerType.MPC
 
 
 def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path):
@@ -52,10 +53,8 @@ def p_controller(init_state, path, gp_sim, env, obstacles):
         while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
             # Just a simple P controller
             difference = np.array(temp_aim) - curr_state
-            print(difference)
             P = 0.1
             desired_speed = P * difference
-            print(desired_speed)
             # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
             alpha = alpha_and_f_d[0]
@@ -91,7 +90,36 @@ def mpc_controller(init_state, path, gp_sim, env, obstacles):
     executed_path = [init_state]
     curr_state = init_state
 
-    
+    for temp_aim in path:
+        while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
+            _, u = run_once([temp_aim], curr_state)
+            desired_speed = u[:2]
+
+            alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
+            alpha = alpha_and_f_d[0]
+            f_t = MAGNETIC_FIELD_FREQ
+            
+            print("-----------------------------")
+            print(f"past state: {curr_state}")
+            print(f"desired speed: {desired_speed}")
+            print(f"speed's angle", np.arctan2(desired_speed[1], desired_speed[0]))
+            #alpha = np.arctan2(desired_speed[1], desired_speed[0])
+            print(f"alpha: {alpha}")
+            print(f"f_t: {f_t}")
+            print(f"muX: {muX}")
+            print(f"muY: {muY}")
+            print(f"sigX: {sigX}")
+            print(f"sigY: {sigY}")
+
+            env.step(f_t, alpha)
+            past_state = curr_state
+            curr_state = env.last_pos
+            print("curr_state: ", curr_state)
+            print("state difference: ", np.array(curr_state) - np.array(past_state))
+            print("-----------------------------")
+            executed_path.append(curr_state)
+
+            plot(obstacles, path[0], path[-1], path, executed_path)
 
     return executed_path
 
@@ -159,6 +187,8 @@ def main():
 
     if CONTROLLER_TYPE == ControllerType.P:
         p_controller(curr_state, to_be_followed_path, gp_sim, env, obstacles)
+    elif CONTROLLER_TYPE == ControllerType.MPC:
+        mpc_controller(curr_state, to_be_followed_path, gp_sim, env, obstacles)
 
     
         
