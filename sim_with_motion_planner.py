@@ -19,7 +19,7 @@ class ControllerType(enum.Enum):
 SIMULATION_FREQ_HZ = 30
 MAGNETIC_FIELD_FREQ = 2
 ACCEPTED_DISTANCE = 0.2
-NOISE = 0.0
+NOISE = 2.0
 CONTROLLER_TYPE = ControllerType.MPC
 
 
@@ -27,7 +27,7 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
 
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     for obstacle in obstacles:
         ax.add_patch(
             patches.Rectangle(
@@ -46,98 +46,49 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
     ax.plot(executed_path[:,0], executed_path[:,1], 'r')
     plt.show()
 
-def p_controller(init_state, path, gp_sim, env, obstacles):
+def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controller_type=None):
     executed_path = [init_state]
     curr_state = init_state
     for temp_aim in path:
         while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
-            # Just a simple P controller
-            difference = np.array(temp_aim) - curr_state
-            P = 0.1
-            desired_speed = P * difference
+            if controller_type == ControllerType.P:
+                difference = np.array(temp_aim) - curr_state
+                P = 0.1
+                desired_speed = P * difference
+            elif controller_type == ControllerType.MPC:
+                _, u = run_once([temp_aim], curr_state)
+                desired_speed = u[:2]
+
             # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
             alpha = alpha_and_f_d[0]
             f_t = MAGNETIC_FIELD_FREQ
             
-            print("-----------------------------")
-            print(f"past state: {curr_state}")
-            print(f"desired speed: {desired_speed}")
-            print(f"speed's angle", np.arctan2(desired_speed[1], desired_speed[0]))
-            #alpha = np.arctan2(desired_speed[1], desired_speed[0])
-            print(f"alpha: {alpha}")
-            print(f"f_t: {f_t}")
-            print(f"muX: {muX}")
-            print(f"muY: {muY}")
-            print(f"sigX: {sigX}")
-            print(f"sigY: {sigY}")
+            if verbose:
+                print("-----------------------------")
+                print(f"past state: {curr_state}")
+                print(f"desired speed: {desired_speed}")
+                print(f"speed's angle", np.arctan2(desired_speed[1], desired_speed[0]))
+                #alpha = np.arctan2(desired_speed[1], desired_speed[0])
+                print(f"alpha: {alpha}")
+                print(f"f_t: {f_t}")
+                print(f"muX: {muX}")
+                print(f"muY: {muY}")
+                print(f"sigX: {sigX}")
+                print(f"sigY: {sigY}")
 
             env.step(f_t, alpha)
             past_state = curr_state
             curr_state = env.last_pos
-            print("curr_state: ", curr_state)
-            print("state difference: ", np.array(curr_state) - np.array(past_state))
-            print("-----------------------------")
+            if verbose:
+                print("curr_state: ", curr_state)
+                print("state difference: ", np.array(curr_state) - np.array(past_state))
+                print("-----------------------------")
             executed_path.append(curr_state)
 
-            #plot(obstacles, [start_x, start_y], [goal_x, goal_y], to_be_followed_path, executed_path)
     plot(obstacles, path[0], path[-1], path, executed_path)
 
-def mpc_controller(init_state, path, gp_sim, env, obstacles):
-    """
-    Implements model predictive controller
-    """
-    executed_path = [init_state]
-    curr_state = init_state
 
-    for temp_aim in path:
-        while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
-            _, u = run_once([temp_aim], curr_state)
-            desired_speed = u[:2]
-
-            alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
-            alpha = alpha_and_f_d[0]
-            f_t = MAGNETIC_FIELD_FREQ
-            
-            print("-----------------------------")
-            print(f"past state: {curr_state}")
-            print(f"desired speed: {desired_speed}")
-            print(f"speed's angle", np.arctan2(desired_speed[1], desired_speed[0]))
-            #alpha = np.arctan2(desired_speed[1], desired_speed[0])
-            print(f"alpha: {alpha}")
-            print(f"f_t: {f_t}")
-            print(f"muX: {muX}")
-            print(f"muY: {muY}")
-            print(f"sigX: {sigX}")
-            print(f"sigY: {sigY}")
-
-            env.step(f_t, alpha)
-            past_state = curr_state
-            curr_state = env.last_pos
-            print("curr_state: ", curr_state)
-            print("state difference: ", np.array(curr_state) - np.array(past_state))
-            print("-----------------------------")
-            executed_path.append(curr_state)
-
-            plot(obstacles, path[0], path[-1], path, executed_path)
-
-    return executed_path
-
-def path_cost_calculator(desired_path, executed_path):
-    """
-    Calculates the cost of the path
-    """
-    cost = 0
-    desired_path_index = 0
-
-    for point in executed_path:
-        # find the distance between the point and the desired_path[desired_path_index] - desired_path[desired_path_index + 1]
-        # if the distance is less than ACCEPTED_DISTANCE, then increase the desired_path_index
-        # if the distance is more than ACCEPTED_DISTANCE, then add the distance to the cost
-        
-        pass
-
-    return cost
 
 def main():
     gp_sim = GP.LearningModule()
@@ -185,16 +136,7 @@ def main():
         a0 = a0_sim,
         is_mismatched = True)
 
-    if CONTROLLER_TYPE == ControllerType.P:
-        p_controller(curr_state, to_be_followed_path, gp_sim, env, obstacles)
-    elif CONTROLLER_TYPE == ControllerType.MPC:
-        mpc_controller(curr_state, to_be_followed_path, gp_sim, env, obstacles)
-
-    
-        
-
-
-
+    controller(curr_state, to_be_followed_path, gp_sim, env, obstacles, verbose=False, controller_type=CONTROLLER_TYPE)
 
 
 if __name__ == "__main__":

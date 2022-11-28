@@ -10,10 +10,43 @@ from shapely.geometry import LineString, Point
 # it is assumed that the first point of the path is the next goal point
 PATH = []
 INIT_POSITION = (0.0, 0.0)
-STEP_SIZE = 0.1
 W_u = 0.1
 W_p = 1
 PREDICTION_HORIZON = 5
+
+class MPC():
+    """
+    This class is used to run the MPC algorithm.
+    Parameters:
+        path: List[Tuple[float, float]] - the path to follow
+        curr_position: Tuple[float, float] - the initial position of the robot
+        w_u: float - the weight of the control input
+        w_p: float - the weight of the position error
+        prediction_horizon: int - the number of steps to predict
+    """
+    def __init__(
+        self,
+        path: List[Tuple[float, float]],
+        curr_position: Tuple[float, float],
+        w_u: float,
+        w_p: float,
+        prediction_horizon: int,
+        ):
+        self.path = path
+        self.curr_position = curr_position
+        self.w_u = w_u
+        self.w_p = w_p
+        self.prediction_horizon = prediction_horizon
+
+    def set_position(self, position: Tuple[float, float]):
+        """
+        Sets the current position of the robot.
+        Parameters:
+            position: Tuple[float, float] - the current position of the robot
+        """
+        self.curr_position = position
+
+        
 
 
 
@@ -39,33 +72,7 @@ def d(u: List[float]):
 
     return cost
 
-def dd(u: List[Tuple[float, float]]):
-    """
-    Calculates the cost according to the distance between the path and the agent positions
-    Input:
-        u: control input
-    """
 
-    p1 = PATH[0]
-    p2 = PATH[1]
-    p3 = INIT_POSITION
-    line = LineString([p1, p2])
-    point = Point(p3)
-    closest_point = line.interpolate(line.project(point))
-
-    curr_point = np.array(INIT_POSITION)
-    cost = 0
-    i = 0
-    aim = PATH[0]
-    calculated_path = []
-    while i < PREDICTION_HORIZON:
-        calculated_path.append(curr_point)
-        cost += get_distance(curr_point[0], curr_point[1], aim[0], aim[1])
-        curr_point += u[i]
-        i += 1
-
-
-    return cost
 
 
 def to_be_optimized(u):
@@ -91,34 +98,8 @@ def test():
     print("Should be 1,1")
     d(None)
 
-def MPC(U_limit: float, path_to_traverse: List[np.array], init_position: np.array):
-    """
-    The main function of the MPC
-    Input:
-        U_limit: the limit of the control input
-        path_to_traverse: the path to traverse
-        init_position: the initial position of the agent
-    Output:
-    """
-    global PATH, INIT_POSITION
-
-    U_limit = 0.1
-    PATH = [np.array([0, 0]), np.array([1, 0]), np.array([2, 0])]
-    INIT_POSITION = (-1.0, 0.0)
-
-    # make PREDICTION_HORIZON control inputs, each of which is a 2D vector
-    u0 = np.zeros((PREDICTION_HORIZON, 2))
-    bounds = [(-U_limit, U_limit)]*PREDICTION_HORIZON*2
-    a = minimize(to_be_optimized, u0,method = "SLSQP", options={'maxiter': 1000}, bounds=bounds)
-
-    u = a.x.reshape((PREDICTION_HORIZON, 2))
-
-    curr_position = np.array(INIT_POSITION)
-    for i in range(PREDICTION_HORIZON):
-        curr_position += u[i]
-
-    return u
-
+def constraint(u, i):
+    return 0.1 - np.sqrt(u[2*i]**2 + u[2*i+1]**2)
 
 
 def run_once(path, init_position):
@@ -132,13 +113,19 @@ def run_once(path, init_position):
     u0 = [0.0]*PREDICTION_HORIZON*2
     #u0 = [0.0, -0.1, 0.0, -0.1, 0.0, -0.1, 0.0, 0.0, 0.0, 0.0]
     bounds = [(-U_limit, U_limit)]*PREDICTION_HORIZON*2
-    a = minimize(to_be_optimized, u0, method = "SLSQP", options={'maxiter': 1000}, bounds=bounds)
+    cons = (
+        {'type': 'ineq', 'fun': lambda u: constraint(u, 0)},
+        {'type': 'ineq', 'fun': lambda u: constraint(u, 1)},
+        {'type': 'ineq', 'fun': lambda u: constraint(u, 2)},
+        {'type': 'ineq', 'fun': lambda u: constraint(u, 3)},
+        {'type': 'ineq', 'fun': lambda u: constraint(u, 4)},
+    )
+    a = minimize(to_be_optimized, u0, method = "SLSQP", constraints = cons, options={'maxiter': 1000}, bounds=bounds)
     #print(a)
 
     #u = a.x.reshape((PREDICTION_HORIZON, 2))
     u = a.x
     cost = d(u)
-    #print("the cost of the path is: ", dd(u))
 
     return cost, u
 
