@@ -4,7 +4,7 @@ import enum
 from main_2d import execute_idle_action, execute_learn_action
 import Learning_module_2d as GP
 from motion_planner.motion_planner import RRT
-from mpc import run_once
+from mpc import MPC
 
 from MR_env import MR_Env
 from utils import find_alpha_corrected
@@ -16,10 +16,12 @@ class ControllerType(enum.Enum):
     MPC = 1
 
 
-SIMULATION_FREQ_HZ = 30
 MAGNETIC_FIELD_FREQ = 2
+# this can be much much smaller, but, beacuse we do not use magnetic field frequency, 
+# we cannot control the speed, we can only control the direction of the speed
+# therefore, we need to accept a bigger accepted distance for now
 ACCEPTED_DISTANCE = 0.2
-NOISE = 2.0
+NOISE = 0.0
 CONTROLLER_TYPE = ControllerType.MPC
 
 
@@ -49,14 +51,21 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
 def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controller_type=None):
     executed_path = [init_state]
     curr_state = init_state
-    for temp_aim in path:
+    for i, temp_aim in enumerate(path):
         while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
             if controller_type == ControllerType.P:
                 difference = np.array(temp_aim) - curr_state
                 P = 0.1
                 desired_speed = P * difference
             elif controller_type == ControllerType.MPC:
-                _, u = run_once([temp_aim], curr_state)
+                rest_path = path[i:] if i != 0 else path
+                mpc = MPC(
+                    path = rest_path, 
+                    curr_position = curr_state, 
+                    w_u = 1, 
+                    w_p = 10
+                    )
+                _, u = mpc.run()
                 desired_speed = u[:2]
 
             # get the alpha value for this speed
@@ -106,6 +115,7 @@ def main():
     goal_x = 7.5
     goal_y = -7.5
     step_size = 0.2
+    rewire_distance = 5.0
     max_iter = 5000
     env_min_x = -10
     env_min_y = -10
@@ -117,6 +127,7 @@ def main():
         goal_x, 
         goal_y, 
         step_size, 
+        rewire_distance,
         max_iter, 
         env_min_x, 
         env_min_y, 

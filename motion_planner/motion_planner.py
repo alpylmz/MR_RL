@@ -45,6 +45,7 @@ class RRT:
                 goal_x: float, 
                 goal_y: float,
                 step_size: float,
+                rewire_distance: float,
                 max_iter: int,
                 env_min_x: float,
                 env_min_y: float,
@@ -74,6 +75,7 @@ class RRT:
         self.goal_x = goal_x
         self.goal_y = goal_y
         self.step_size = step_size
+        self.rewire_distance = rewire_distance
         self.max_iter = max_iter
         self.env_min_x = env_min_x
         self.env_min_y = env_min_y
@@ -161,7 +163,7 @@ class RRT:
                 for node in self.nodes:
                     if node == new_node:
                         continue
-                    if get_distance(node.x, node.y, new_x, new_y) < 20 * self.step_size and \
+                    if get_distance(node.x, node.y, new_x, new_y) < self.rewire_distance and \
                         node.cost > new_node.cost + get_distance(node.x, node.y, new_x, new_y):
                         if self.intersects_rectangle(new_x, new_y, node.x, node.y):
                             continue
