@@ -73,6 +73,7 @@ class MPC():
     def constraint(self, u, i):
         """
         This function is used to generate the constraints for the optimization.
+        ||u_x, u_y|| <= 0.1
         Input:
             u: control input
             i: the index of the constraint

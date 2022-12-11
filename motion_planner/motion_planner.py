@@ -128,6 +128,16 @@ class RRT:
                 intersect((x1, y1), (x2, y2), (min_x, max_y), (min_x, min_y)):
                 return True
         return False
+
+    def intersects_polygon(self, x1, y1, x2, y2):
+        """
+        Returns true if the line segment between the two points intersects an polygon.
+        """
+        for obstacle in self.obstacles:
+            for i in range(len(obstacle)):
+                if intersect((x1, y1), (x2, y2), obstacle[i], obstacle[(i+1) % len(obstacle)]):
+                    return True
+        return False
     
     def get_path(self, node):
         """
@@ -148,7 +158,7 @@ class RRT:
             x, y = self.get_random_point()
             nearest_node = self.get_nearest_node(x, y)
             new_x, new_y = self.get_new_point(nearest_node, x, y)
-            if self.intersects_rectangle(nearest_node.x, nearest_node.y, new_x, new_y):
+            if self.intersects_polygon(nearest_node.x, nearest_node.y, new_x, new_y):
                 iteration_count += 1 # If the new point intersects an obstacle, try again
                 continue
             new_node = Node(new_x, new_y, nearest_node, nearest_node.cost + get_distance(nearest_node.x, nearest_node.y, new_x, new_y))
@@ -165,7 +175,7 @@ class RRT:
                         continue
                     if get_distance(node.x, node.y, new_x, new_y) < self.rewire_distance and \
                         node.cost > new_node.cost + get_distance(node.x, node.y, new_x, new_y):
-                        if self.intersects_rectangle(new_x, new_y, node.x, node.y):
+                        if self.intersects_polygon(new_x, new_y, node.x, node.y):
                             continue
                         node.set_parent(new_node)
                         node.cost = new_node.cost + get_distance(node.x, node.y, new_x, new_y)      
@@ -197,8 +207,8 @@ class RRT:
                     ax.plot([node.x, node.parent.x], [node.y, node.parent.y], c='b')
 
         for obstacle in self.obstacles:
-            # draw red rectangle
-            ax.add_patch(patches.Rectangle((obstacle[0], obstacle[1]), obstacle[2], obstacle[3], color='r'))
+            # draw polygon
+            ax.add_patch(patches.Polygon(obstacle, closed=True, fill=True, color='gray'))
         if path is not None:
             x, y = zip(*path)
             ax.plot(x, y, color="black")

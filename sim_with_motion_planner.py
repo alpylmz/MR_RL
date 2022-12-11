@@ -20,7 +20,7 @@ MAGNETIC_FIELD_FREQ = 2
 # this can be much much smaller, but, beacuse we do not use magnetic field frequency, 
 # we cannot control the speed, we can only control the direction of the speed
 # therefore, we need to accept a bigger accepted distance for now
-ACCEPTED_DISTANCE = 0.2
+ACCEPTED_DISTANCE = 0.1
 NOISE = 0.0
 CONTROLLER_TYPE = ControllerType.MPC
 
@@ -31,14 +31,8 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
 
     _, ax = plt.subplots()
     for obstacle in obstacles:
-        ax.add_patch(
-            patches.Rectangle(
-                (obstacle[0], obstacle[1]),   # (x,y)
-                obstacle[2],          # width
-                obstacle[3],          # height
-                fill = True
-            )
-        )
+        # plot as polygons
+        ax.add_patch(patches.Polygon(obstacle, closed=True, fill=True, color='gray'))
 
     ax.plot(start_point[0], start_point[1], 'bo')
     ax.plot(goal_point[0], goal_point[1], 'go')
@@ -107,9 +101,10 @@ def main():
 
     ### We learned the noise and a0, so now it is time to create the test environment!
     obstacles = [
-        (-5, -5, 5, 5), 
-        (5, 5, 5, 5),
-        (0.1, 0.1, 4.8, 4.8)]
+        ([0.5, 0.5], [0.5, 1.5], [1.5, 1.5], [1.5, 0.5]),
+        ([1.0, 0.0], [4.0, 0.0], [4.0, -5.0]),
+        ([-2.0, 6.0], [-2.0, 2.0], [2.0, 4.0], [4.0, 6.0], [5.0, 7.0])
+    ]
     start_x = -2.5
     start_y = 7.5
     goal_x = 7.5
