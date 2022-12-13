@@ -1,5 +1,5 @@
 import numpy as np
-import enum
+from consts import *
 
 from main_2d import execute_idle_action, execute_learn_action
 import Learning_module_2d as GP
@@ -9,21 +9,6 @@ from mpc import MPC
 from MR_env import MR_Env
 from utils import find_alpha_corrected
 from motion_planner.utils import get_distance
-
-# enum for choosing between controller types
-class ControllerType(enum.Enum):
-    P = 0
-    MPC = 1
-
-
-MAGNETIC_FIELD_FREQ = 2
-# this can be much much smaller, but, beacuse we do not use magnetic field frequency, 
-# we cannot control the speed, we can only control the direction of the speed
-# therefore, we need to accept a bigger accepted distance for now
-ACCEPTED_DISTANCE = 0.1
-NOISE = 0.0
-CONTROLLER_TYPE = ControllerType.MPC
-
 
 def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path):
     import matplotlib.pyplot as plt
@@ -55,12 +40,13 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
                 rest_path = path[i:] if i != 0 else path
                 mpc = MPC(
                     path = rest_path, 
-                    curr_position = curr_state, 
-                    w_u = 1, 
-                    w_p = 10
+                    curr_position = curr_state
                     )
                 _, u = mpc.run()
                 desired_speed = u[:2]
+
+                if verbose:
+                    print(f"rest_path: {mpc.path}")
 
             # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)

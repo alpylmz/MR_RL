@@ -1,12 +1,11 @@
 from scipy.optimize import minimize
 import numpy as np
+from consts import *
 
 from motion_planner.utils import get_distance
 
 from typing import List, Tuple
 from shapely.geometry import LineString, Point
-
-STEP_SIZE = 0.1
 
 class MPC():
     """
@@ -22,28 +21,21 @@ class MPC():
         self,
         path: List[Tuple[float, float]],
         curr_position: Tuple[float, float],
-        w_u: float = 1,
-        w_p: float = 1,
-        prediction_horizon: int = 5,
         ):
-        self.path = path
         self.curr_position = curr_position
-        self.w_u = w_u
-        self.w_p = w_p
-        self.prediction_horizon = prediction_horizon
-        self.path = self.discretize_path()
+        self.path = self.discretize_path(path)
 
-    def discretize_path(self):
+    def discretize_path(self, path):
         """
         This function is used to discretize the path.
         """
         # First of all, find the closest point from the current position to the line that is defined by path[0] and path[1]
         # but, if there is only one point in the path, make the line from the current position to the path[0]
         p = Point(self.curr_position)
-        if len(self.path) == 1:
-            line = LineString([self.curr_position, self.path[0]])
+        if len(path) == 1:
+            line = LineString([self.curr_position, path[0]])
         else:
-            line = LineString([self.path[0], self.path[1]])
+            line = LineString([path[0], path[1]])
         closest_point = line.interpolate(line.project(p))
 
         temp_path = []
@@ -53,26 +45,18 @@ class MPC():
             # increase the point to the path[0] by step size
             # and add the point to the path
             curr_point = np.array(self.curr_position)
-            next_point = np.array(self.path[0])
+            next_point = np.array(path[0])
 
         else:
             # here we need to discretize the path from the closest position to path[1]
             curr_point = np.array(closest_point)
-            next_point = np.array(self.path[1])
+            next_point = np.array(path[1])
 
         while get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1]) > STEP_SIZE:
             curr_point += STEP_SIZE * (next_point - curr_point) / get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1])
             temp_path.append(curr_point.copy())
 
         return temp_path
-
-    def set_position(self, position: Tuple[float, float]):
-        """
-        Sets the current position of the robot.
-        Parameters:
-            position: Tuple[float, float] - the current position of the robot
-        """
-        self.curr_position = position
 
     def path_cost(self, u: np.array):
         """
@@ -88,7 +72,7 @@ class MPC():
         i = 0
         aim = self.path[0]
         calculated_path = []
-        while i < self.prediction_horizon:
+        while i < MPC_PREDICTION_HORIZON:
             calculated_path.append(curr_point)
             cost += get_distance(curr_point[0], curr_point[1], aim[0], aim[1])**2
             curr_point[0] += u[2*i]
@@ -104,7 +88,7 @@ class MPC():
             u: control input
         """
         # TODO: np.sum is wrong here!
-        return self.w_u * np.sum(u) + self.w_p * self.path_cost(u)
+        return MPC_W_U * np.sum(u) + MPC_W_P * self.path_cost(u)
 
     def constraint(self, u, i):
         """
@@ -114,15 +98,14 @@ class MPC():
             u: control input
             i: the index of the constraint
         """
-        return 0.1 - np.sqrt(u[2*i]**2 + u[2*i+1]**2)
+        return MPC_U_LIMIT - np.sqrt(u[2*i]**2 + u[2*i+1]**2)
 
     def run(self, curr_pose: Tuple[float, float] = None):
         if curr_pose:
             self.curr_position = curr_pose
 
-        U_limit = 0.1
-        u0 = [0.0]*self.prediction_horizon*2
-        bounds = [(-U_limit, U_limit)]*self.prediction_horizon*2
+        u0 = [0.0] * MPC_PREDICTION_HORIZON * 2
+        bounds = [(-MPC_U_LIMIT, MPC_U_LIMIT)] * MPC_PREDICTION_HORIZON * 2
         cons = (
             {'type': 'ineq', 'fun': lambda u: self.constraint(u, 0)},
             {'type': 'ineq', 'fun': lambda u: self.constraint(u, 1)},
@@ -135,7 +118,7 @@ class MPC():
             u0, 
             method = "SLSQP", 
             constraints = cons, 
-            options = {'maxiter': 1000}, 
+            options = {'maxiter': MPC_SOLVER_MAX_ITER}, 
             bounds = bounds
             )
         
