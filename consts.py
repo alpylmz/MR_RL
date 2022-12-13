@@ -18,7 +18,7 @@ CONTROLLER_TYPE = ControllerType.MPC
 # the coefficients for the cost function
 MPC_W_U = 1
 MPC_W_P = 10
-MPC_PREDICTION_HORIZON = 5
+MPC_PREDICTION_HORIZON = 10
 MPC_U_LIMIT = 0.1
 MPC_SOLVER_MAX_ITER = 1000
 

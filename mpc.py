@@ -25,7 +25,7 @@ class MPC():
         self.curr_position = curr_position
         self.path = self.discretize_path(path)
 
-    def discretize_path(self, path):
+    def discretize_path(self, path: List[Tuple[float, float]]):
         """
         This function is used to discretize the path.
         """
@@ -87,7 +87,6 @@ class MPC():
         Input:
             u: control input
         """
-        # TODO: np.sum is wrong here!
         return MPC_W_U * np.sum(u) + MPC_W_P * self.path_cost(u)
 
     def constraint(self, u, i):
@@ -100,18 +99,11 @@ class MPC():
         """
         return MPC_U_LIMIT - np.sqrt(u[2*i]**2 + u[2*i+1]**2)
 
-    def run(self, curr_pose: Tuple[float, float] = None):
-        if curr_pose:
-            self.curr_position = curr_pose
-
+    def run(self):
         u0 = [0.0] * MPC_PREDICTION_HORIZON * 2
         bounds = [(-MPC_U_LIMIT, MPC_U_LIMIT)] * MPC_PREDICTION_HORIZON * 2
         cons = (
-            {'type': 'ineq', 'fun': lambda u: self.constraint(u, 0)},
-            {'type': 'ineq', 'fun': lambda u: self.constraint(u, 1)},
-            {'type': 'ineq', 'fun': lambda u: self.constraint(u, 2)},
-            {'type': 'ineq', 'fun': lambda u: self.constraint(u, 3)},
-            {'type': 'ineq', 'fun': lambda u: self.constraint(u, 4)},
+            {'type': 'ineq', 'fun': lambda u: self.constraint(u, i)} for i in range(MPC_PREDICTION_HORIZON)
         )
         a = minimize(
             self.objective_function, 
