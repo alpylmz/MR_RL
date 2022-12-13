@@ -18,9 +18,28 @@ CONTROLLER_TYPE = ControllerType.MPC
 # the coefficients for the cost function
 MPC_W_U = 1
 MPC_W_P = 10
-MPC_PREDICTION_HORIZON = 10
+MPC_PREDICTION_HORIZON = 5
 MPC_U_LIMIT = 0.1
 MPC_SOLVER_MAX_ITER = 1000
 
 STEP_SIZE = 0.1
 
+# Environment variables
+ROBOT_START_X = -2.5
+ROBOT_START_Y = 7.5
+ROBOT_GOAL_X = 7.5
+ROBOT_GOAL_Y = -7.5
+ENV_MIN_X = -10
+ENV_MIN_Y = -10
+ENV_WIDTH = 20
+ENV_HEIGHT = 20
+OBSTACLES = [
+    ([0.5, 0.5], [0.5, 1.5], [1.5, 1.5], [1.5, 0.5]),
+    ([1.0, 0.0], [4.0, 0.0], [4.0, -5.0]),
+    ([-2.0, 6.0], [-2.0, 2.0], [2.0, 4.0], [4.0, 6.0], [5.0, 7.0])
+]
+
+# RRT consts
+RRT_STEP_SIZE = 0.2
+RRT_REWIRE_DISTANCE = 5.0
+RRT_MAX_ITER = 5000

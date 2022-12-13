@@ -25,6 +25,9 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
     ax.plot(to_be_followed_path[:,0], to_be_followed_path[:,1], 'b')
     executed_path = np.array(executed_path)
     ax.plot(executed_path[:,0], executed_path[:,1], 'r')
+    # put boundaries
+    ax.set_xlim([ENV_MIN_X, ENV_MIN_X + ENV_WIDTH])
+    ax.set_ylim([ENV_MIN_Y, ENV_MIN_Y + ENV_HEIGHT])
     plt.show()
 
 def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controller_type=None):
@@ -86,41 +89,25 @@ def main():
     a0_sim = execute_learn_action(gp_sim, noise_var = NOISE, plot = True)
 
     ### We learned the noise and a0, so now it is time to create the test environment!
-    obstacles = [
-        ([0.5, 0.5], [0.5, 1.5], [1.5, 1.5], [1.5, 0.5]),
-        ([1.0, 0.0], [4.0, 0.0], [4.0, -5.0]),
-        ([-2.0, 6.0], [-2.0, 2.0], [2.0, 4.0], [4.0, 6.0], [5.0, 7.0])
-    ]
-    start_x = -2.5
-    start_y = 7.5
-    goal_x = 7.5
-    goal_y = -7.5
-    step_size = 0.2
-    rewire_distance = 5.0
-    max_iter = 5000
-    env_min_x = -10
-    env_min_y = -10
-    env_width = 20
-    env_height = 20
     rrt = RRT(
-        start_x, 
-        start_y, 
-        goal_x, 
-        goal_y, 
-        step_size, 
-        rewire_distance,
-        max_iter, 
-        env_min_x, 
-        env_min_y, 
-        env_width,
-        env_height, 
-        obstacles)
+        ROBOT_START_X, 
+        ROBOT_START_Y, 
+        ROBOT_GOAL_X, 
+        ROBOT_GOAL_Y, 
+        RRT_STEP_SIZE, 
+        RRT_REWIRE_DISTANCE,
+        RRT_MAX_ITER, 
+        ENV_MIN_X, 
+        ENV_MIN_Y, 
+        ENV_WIDTH,
+        ENV_HEIGHT, 
+        OBSTACLES)
 
     to_be_followed_path = rrt.RRTStar(plot = False, rewire = True, repeat = True)
 
     print(to_be_followed_path)
 
-    curr_state = np.array([start_x, start_y])
+    curr_state = np.array([ROBOT_START_X, ROBOT_START_Y])
     env = MR_Env()
     env.reset(
         init = curr_state,
@@ -128,7 +115,7 @@ def main():
         a0 = a0_sim,
         is_mismatched = True)
 
-    controller(curr_state, to_be_followed_path, gp_sim, env, obstacles, verbose=False, controller_type=CONTROLLER_TYPE)
+    controller(curr_state, to_be_followed_path, gp_sim, env, OBSTACLES, verbose = False, controller_type = CONTROLLER_TYPE)
 
 
 if __name__ == "__main__":

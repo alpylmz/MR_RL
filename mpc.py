@@ -42,8 +42,6 @@ class MPC():
         # If the closest point is not on the line, that means that the robot is not on the path
         if not line.contains(closest_point):
             # here we need to discretize the path from the current position to path[0]
-            # increase the point to the path[0] by step size
-            # and add the point to the path
             curr_point = np.array(self.curr_position)
             next_point = np.array(path[0])
 
@@ -52,6 +50,7 @@ class MPC():
             curr_point = np.array(closest_point)
             next_point = np.array(path[1])
 
+        # add the points from curr point to next point step by step
         while get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1]) > STEP_SIZE:
             curr_point += STEP_SIZE * (next_point - curr_point) / get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1])
             temp_path.append(curr_point.copy())
