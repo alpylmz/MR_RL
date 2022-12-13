@@ -6,6 +6,8 @@ from motion_planner.utils import get_distance
 from typing import List, Tuple
 from shapely.geometry import LineString, Point
 
+STEP_SIZE = 0.1
+
 class MPC():
     """
     This class is used to run the MPC algorithm.
@@ -29,6 +31,40 @@ class MPC():
         self.w_u = w_u
         self.w_p = w_p
         self.prediction_horizon = prediction_horizon
+        self.path = self.discretize_path()
+
+    def discretize_path(self):
+        """
+        This function is used to discretize the path.
+        """
+        # First of all, find the closest point from the current position to the line that is defined by path[0] and path[1]
+        # but, if there is only one point in the path, make the line from the current position to the path[0]
+        p = Point(self.curr_position)
+        if len(self.path) == 1:
+            line = LineString([self.curr_position, self.path[0]])
+        else:
+            line = LineString([self.path[0], self.path[1]])
+        closest_point = line.interpolate(line.project(p))
+
+        temp_path = []
+        # If the closest point is not on the line, that means that the robot is not on the path
+        if not line.contains(closest_point):
+            # here we need to discretize the path from the current position to path[0]
+            # increase the point to the path[0] by step size
+            # and add the point to the path
+            curr_point = np.array(self.curr_position)
+            next_point = np.array(self.path[0])
+
+        else:
+            # here we need to discretize the path from the closest position to path[1]
+            curr_point = np.array(closest_point)
+            next_point = np.array(self.path[1])
+
+        while get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1]) > STEP_SIZE:
+            curr_point += STEP_SIZE * (next_point - curr_point) / get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1])
+            temp_path.append(curr_point.copy())
+
+        return temp_path
 
     def set_position(self, position: Tuple[float, float]):
         """
@@ -54,7 +90,7 @@ class MPC():
         calculated_path = []
         while i < self.prediction_horizon:
             calculated_path.append(curr_point)
-            cost += get_distance(curr_point[0], curr_point[1], aim[0], aim[1])
+            cost += get_distance(curr_point[0], curr_point[1], aim[0], aim[1])**2
             curr_point[0] += u[2*i]
             curr_point[1] += u[2*i+1]
             i += 1
@@ -111,7 +147,7 @@ class MPC():
 if __name__ == "__main__":
     
     path = [np.array([0, 0]), np.array([1, 0]), np.array([2, 0])]
-    INIT_POSITION = (-0.3, 0.3)
+    INIT_POSITION = (0.3, -0.2)
 
     mpc = MPC(path, INIT_POSITION)
     min_cost, best_u = mpc.run()
