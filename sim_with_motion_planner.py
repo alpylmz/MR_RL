@@ -1,5 +1,6 @@
 import numpy as np
 from consts import *
+from MR_RL_logger import mr_rl_logger as log
 
 from main_2d import execute_idle_action, execute_learn_action
 import Learning_module_2d as GP
@@ -56,26 +57,26 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
             alpha = alpha_and_f_d[0]
             f_t = MAGNETIC_FIELD_FREQ
             
-            if verbose:
-                print("-----------------------------")
-                print(f"past state: {curr_state}")
-                print(f"desired speed: {desired_speed}")
-                print(f"speed's angle", np.arctan2(desired_speed[1], desired_speed[0]))
-                #alpha = np.arctan2(desired_speed[1], desired_speed[0])
-                print(f"alpha: {alpha}")
-                print(f"f_t: {f_t}")
-                print(f"muX: {muX}")
-                print(f"muY: {muY}")
-                print(f"sigX: {sigX}")
-                print(f"sigY: {sigY}")
+            log.debug("-----------------------------")
+            log.debug(f"past state: {curr_state}")
+            log.debug(f"desired speed: {desired_speed}")
+            log.debug(f"speed's angle {np.arctan2(desired_speed[1], desired_speed[0])}")
+            #alpha = np.arctan2(desired_speed[1], desired_speed[0])
+            log.debug(f"alpha: {alpha}")
+            log.debug(f"f_t: {f_t}")
+            log.debug(f"muX: {muX}")
+            log.debug(f"muY: {muY}")
+            log.debug(f"sigX: {sigX}")
+            log.debug(f"sigY: {sigY}")
+
 
             env.step(f_t, alpha)
             past_state = curr_state
             curr_state = env.last_pos
-            if verbose:
-                print("curr_state: ", curr_state)
-                print("state difference: ", np.array(curr_state) - np.array(past_state))
-                print("-----------------------------")
+            log.debug(f"curr_state: {curr_state}")
+            log.debug(f"state difference: {np.array(curr_state) - np.array(past_state)}")
+            log.debug("-----------------------------")
+
             executed_path.append(curr_state)
 
     plot(obstacles, path[0], path[-1], path, executed_path)
