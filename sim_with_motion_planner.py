@@ -1,6 +1,7 @@
 import numpy as np
 from consts import *
 from MR_RL_logger import mr_rl_logger as log
+import logging
 
 from main_2d import execute_idle_action, execute_learn_action
 import Learning_module_2d as GP
@@ -55,7 +56,13 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
             # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
             alpha = alpha_and_f_d[0]
-            f_t = MAGNETIC_FIELD_FREQ
+            # this is bad solution, MPC should be able to handle this later TODO
+            if np.sqrt(desired_speed[0]**2 + desired_speed[1]**2) < MPC_MIN_U_LIMIT:
+                # scale the speed to the minimum speed
+                desired_speed = desired_speed / np.linalg.norm(desired_speed) * MPC_MIN_U_LIMIT
+            else:
+                print("desired speed is ok")
+            f_t = np.linalg.norm(desired_speed) / gp_sim.a0
             
             log.debug("-----------------------------")
             log.debug(f"past state: {curr_state}")
@@ -78,6 +85,9 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
             log.debug("-----------------------------")
 
             executed_path.append(curr_state)
+
+            if LOGGER_LEVEL == logging.DEBUG:
+                plot(obstacles, path[0], path[-1], path, executed_path)
 
     plot(obstacles, path[0], path[-1], path, executed_path)
 

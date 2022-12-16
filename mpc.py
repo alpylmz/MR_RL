@@ -86,7 +86,11 @@ class MPC():
         Input:
             u: control input
         """
-        return MPC_W_U * np.sum(u) + MPC_W_P * self.path_cost(u)
+        u_sum_squared = 0
+        for i in range(MPC_PREDICTION_HORIZON):
+            u_sum_squared += u[2*i]**2 + u[2*i+1]**2
+            
+        return MPC_W_U * u_sum_squared + MPC_W_P * self.path_cost(u)
 
     def constraint(self, u, i):
         """
@@ -98,12 +102,29 @@ class MPC():
         """
         return MPC_U_LIMIT - np.sqrt(u[2*i]**2 + u[2*i+1]**2)
 
+    def constraint2(self, u, i):
+        """
+        This function is used to generate the constraints for the optimization.
+        ||u_x, u_y|| => 0.01
+        Input:
+            u: control input
+            i: the index of the constraint
+        """
+        return np.sqrt(u[2*i]**2 + u[2*i+1]**2) - MPC_MIN_U_LIMIT
+
+
     def run(self):
-        u0 = [0.0] * MPC_PREDICTION_HORIZON * 2
+        u0 = [4.0] * MPC_PREDICTION_HORIZON * 2
         bounds = [(-MPC_U_LIMIT, MPC_U_LIMIT)] * MPC_PREDICTION_HORIZON * 2
         cons = (
             {'type': 'ineq', 'fun': lambda u: self.constraint(u, i)} for i in range(MPC_PREDICTION_HORIZON)
         )
+        # TODO CHECK THIS
+        cons2 = (
+            {'type': 'ineq', 'fun': lambda u: self.constraint2(u, i)} for i in range(MPC_PREDICTION_HORIZON)
+        )
+        #cons = list(cons) + list(cons2)
+
         a = minimize(
             self.objective_function, 
             u0, 
