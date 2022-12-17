@@ -1,4 +1,5 @@
-from scipy.optimize import minimize
+from gekko import GEKKO
+
 import numpy as np
 from consts import *
 
@@ -21,28 +22,32 @@ class MPC():
         self,
         path: List[Tuple[float, float]],
         curr_position: Tuple[float, float],
+        a0: float,
         ):
         self.curr_position = curr_position
-        self.path = self.discretize_path(path)
+        print("given path: ", path)
+        self.path = self.discretize_path(path, curr_position)[:MPC_PREDICTION_HORIZON - 1]
+        self.a0 = a0
 
-    def discretize_path(self, path: List[Tuple[float, float]]):
+    def discretize_path(self, path: List[Tuple[float, float]], curr_pos: Tuple[float, float], len_of_path = 0):
         """
         This function is used to discretize the path.
         """
         # First of all, find the closest point from the current position to the line that is defined by path[0] and path[1]
         # but, if there is only one point in the path, make the line from the current position to the path[0]
-        p = Point(self.curr_position)
-        if len(path) == 1:
-            line = LineString([self.curr_position, path[0]])
+        if len(path) == 0:
+            return []
+        elif len(path) == 1:
+            line = LineString([curr_pos, path[0]])
         else:
             line = LineString([path[0], path[1]])
-        closest_point = line.interpolate(line.project(p))
+        closest_point = line.interpolate(line.project(Point(curr_pos)))
 
         temp_path = []
         # If the closest point is not on the line, that means that the robot is not on the path
         if not line.contains(closest_point):
             # here we need to discretize the path from the current position to path[0]
-            curr_point = np.array(self.curr_position)
+            curr_point = np.array(curr_pos)
             next_point = np.array(path[0])
 
         else:
@@ -54,6 +59,9 @@ class MPC():
         while get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1]) > STEP_SIZE:
             curr_point += STEP_SIZE * (next_point - curr_point) / get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1])
             temp_path.append(curr_point.copy())
+        
+        if (len(temp_path) + len_of_path) < MPC_PREDICTION_HORIZON:
+            temp_path += self.discretize_path(path[1:], temp_path[-1], len_of_path=len_of_path + len(temp_path))
 
         return temp_path
 
@@ -99,24 +107,68 @@ class MPC():
         return MPC_U_LIMIT - np.sqrt(u[2*i]**2 + u[2*i+1]**2)
 
     def run(self):
-        u0 = [0.0] * MPC_PREDICTION_HORIZON * 2
-        bounds = [(-MPC_U_LIMIT, MPC_U_LIMIT)] * MPC_PREDICTION_HORIZON * 2
-        cons = (
-            {'type': 'ineq', 'fun': lambda u: self.constraint(u, i)} for i in range(MPC_PREDICTION_HORIZON)
-        )
-        a = minimize(
-            self.objective_function, 
-            u0, 
-            method = "SLSQP", 
-            constraints = cons, 
-            options = {'maxiter': MPC_SOLVER_MAX_ITER}, 
-            bounds = bounds
-            )
+        prediction_horizon = min(MPC_PREDICTION_HORIZON, len(self.path))
         
-        u = a.x
-        cost = self.path_cost(u)
+        m = GEKKO(remote = False)
+        a0 = self.a0
 
-        return cost, u
+        # Define the variables
+        # control input
+        f = [m.Var(lb = 0.0, ub = MAX_F) for _ in range(prediction_horizon)]
+        alpha = [m.Var(lb = -3.14, ub = 3.14) for _ in range(prediction_horizon)]
+
+        """
+        u = []
+        for i in range(prediction_horizon):
+            u.append(a0 * f[i] * np.cos(alpha[i]))
+            u.append(a0 * f[i] * np.sin(alpha[i]))
+        """
+
+        # position
+        q = []
+        for i in range(prediction_horizon):
+            q += [
+                m.Var(lb = ENV_MIN_X, ub = ENV_MIN_X + ENV_WIDTH), 
+                m.Var(lb = ENV_MIN_Y, ub = ENV_MIN_Y + ENV_HEIGHT)
+                ] 
+
+        # constraints
+        # constraint on the input magnitude
+        
+        for i in range(prediction_horizon):
+            m.Equation(
+                a0 * f[i] <= MPC_U_LIMIT
+            )
+            m.Equation(
+                a0 * f[i] >= -MPC_U_LIMIT
+            )
+
+
+        # constraint on the next positions
+        for i in range(prediction_horizon):
+            m.Equation(q[2*i] == q[2*i-2] + (a0 * f[i] * m.cos(alpha[i]) * TIME_STEP))
+            m.Equation(q[2*i+1] == q[2*i-1] + (a0 * f[i] * m.sin(alpha[i]) * TIME_STEP))
+
+        
+        # objective function
+        m.Obj(
+            # MPC_W_U * np.sum([a0 * f[i] for i in range(prediction_horizon)])
+            # + 
+            MPC_W_P * np.sum((np.array(np.reshape(q, (prediction_horizon, 2))) - np.array(self.path))**2)
+        )
+
+        m.solve()
+        print('the used path is: ', self.path)
+        print('lets check the f')
+        print(f[0].value[0])
+        
+        return np.array([
+            f[i].value[0] for i in range(prediction_horizon)
+            ]), \
+            np.array([
+            alpha[i].value[0] for i in range(prediction_horizon)
+            ])
+
 
 if __name__ == "__main__":
     

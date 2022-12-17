@@ -44,18 +44,22 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
                 rest_path = path[i:] if i != 0 else path
                 mpc = MPC(
                     path = rest_path, 
-                    curr_position = curr_state
+                    curr_position = curr_state,
+                    a0 = gp_sim.a0,
                     )
-                _, u = mpc.run()
-                desired_speed = u[:2]
+                f, alpha = mpc.run()
+                print(f"f: {f}, alpha: {alpha}")
+                desired_speed = np.array([gp_sim.a0 * f[0] * np.cos(alpha[0]), gp_sim.a0 * f[0] * np.sin(alpha[0])])
+                print(f"desired speed: {desired_speed}")
 
                 if verbose:
                     print(f"rest_path: {mpc.path}")
 
+            f_t = np.sqrt(desired_speed[0]**2 + desired_speed[1]**2) / gp_sim.a0
+            f_t *= 10
             # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
             alpha = alpha_and_f_d[0]
-            f_t = MAGNETIC_FIELD_FREQ
             
             log.debug("-----------------------------")
             log.debug(f"past state: {curr_state}")
@@ -64,10 +68,6 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
             #alpha = np.arctan2(desired_speed[1], desired_speed[0])
             log.debug(f"alpha: {alpha}")
             log.debug(f"f_t: {f_t}")
-            log.debug(f"muX: {muX}")
-            log.debug(f"muY: {muY}")
-            log.debug(f"sigX: {sigX}")
-            log.debug(f"sigY: {sigY}")
 
 
             env.step(f_t, alpha)
@@ -79,7 +79,7 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
 
             executed_path.append(curr_state)
 
-    plot(obstacles, path[0], path[-1], path, executed_path)
+            plot(obstacles, path[0], path[-1], path, executed_path)
 
 
 
