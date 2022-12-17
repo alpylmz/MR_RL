@@ -34,6 +34,13 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
 def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controller_type=None):
     executed_path = [init_state]
     curr_state = init_state
+    path = [
+        (-2.5, 7.5), 
+        (-2.0, 7.5),
+        (-1.0, 7.5),
+        (-1.0, 7.0),
+        (-1.0, 6.5)
+        ]
     for i, temp_aim in enumerate(path):
         while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
             if controller_type == ControllerType.P:
@@ -79,10 +86,9 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
 
             executed_path.append(curr_state)
 
-            plot(obstacles, path[0], path[-1], path, executed_path)
+    plot(obstacles, path[0], path[-1], path, executed_path)
 
-
-
+        
 def main():
     gp_sim = GP.LearningModule()
 
