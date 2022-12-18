@@ -1,4 +1,5 @@
 from gekko import GEKKO
+from MR_RL_logger import mr_rl_logger as log
 
 import numpy as np
 from consts import *
@@ -25,7 +26,6 @@ class MPC():
         a0: float,
         ):
         self.curr_position = curr_position
-        print("given path: ", path)
         self.path = self.discretize_path(path, curr_position)[:MPC_PREDICTION_HORIZON]
         self.a0 = a0
 
@@ -135,9 +135,6 @@ class MPC():
         for i in range(prediction_horizon):
             m.Equation(f[i] * a0 >= MPC_MINIMUM_SPEED)
 
-        print("------------------")
-        print(q)
-        print("------------------")
         # objective function
         m.Obj(
             # MPC_W_U * np.sum([a0 * f[i] for i in range(prediction_horizon)])
@@ -148,13 +145,12 @@ class MPC():
         m.options.SOLVER = 3
 
         m.solve(disp=False)
-        print('the used path is: ', self.path)
-        print('lets check the f')
-        print(f[0].value[0])
-        print('lets check the positions')
-        print(self.curr_position[0], self.curr_position[1])
+        log.debug(f'the used path is: {self.path}')
+        log.debug(f'lets check the f {f[0].value[0]}')
+        log.debug('lets check the positions')
+        log.debug(f"{self.curr_position[0]}, {self.curr_position[1]}")
         for i in range(1, prediction_horizon):
-            print(q[i][0].value[0], q[i][1].value[0])
+            log.debug(f"{q[i][0].value[0]}, {q[i][1].value[0]}")
         
         return np.array([
             f[i].value[0] for i in range(prediction_horizon)

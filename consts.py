@@ -1,5 +1,5 @@
 import enum
-import logging as log
+import logging
 
 # enum for choosing between controller types
 class ControllerType(enum.Enum):
@@ -48,4 +48,4 @@ RRT_STEP_SIZE = 0.2
 RRT_REWIRE_DISTANCE = 5.0
 RRT_MAX_ITER = 5000
 
-LOGGER_LEVEL = log.WARN
+LOGGER_LEVEL = logging.WARN

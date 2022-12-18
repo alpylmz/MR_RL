@@ -29,7 +29,7 @@ def execute_idle_action(gp_sim: GP.LearningModule, noise_var = 0.0):
                                                             init_pos = np.array([0, 0]),
                                                             noise_var = noise_var,
                                                             a0 = A0_DEF,
-                                                            is_mismatched = True
+                                                            is_mismatched = False
                                                             )
 
     gp_sim.estimateDisturbance(px_idle, py_idle, time_idle)
@@ -70,7 +70,7 @@ def execute_learn_action(gp_sim: GP.LearningModule, noise_var = 0.0, plot = True
                                                         init_pos = np.array([0, 0]),
                                                         noise_var = noise_var,
                                                         a0 = A0_DEF,
-                                                        is_mismatched = True
+                                                        is_mismatched = False
                                                         )
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 from consts import *
+import logging
 from MR_RL_logger import mr_rl_logger as log
 
 from main_2d import execute_idle_action, execute_learn_action
@@ -11,7 +12,7 @@ from MR_env import MR_Env
 from utils import find_alpha_corrected
 from motion_planner.utils import get_distance
 
-def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path):
+def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path, curr_pose = None):
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
 
@@ -27,13 +28,18 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path)
     executed_path = np.array(executed_path)
     ax.plot(executed_path[:,0], executed_path[:,1], 'r')
     # put boundaries
-    ax.set_xlim([ENV_MIN_X, ENV_MIN_X + ENV_WIDTH])
-    ax.set_ylim([ENV_MIN_Y, ENV_MIN_Y + ENV_HEIGHT])
+    if LOGGER_LEVEL == logging.DEBUG:
+        ax.set_xlim([curr_pose[0] - 1, curr_pose[0] + 1])
+        ax.set_ylim([curr_pose[1] - 1, curr_pose[1] + 1])
+    else:
+        ax.set_xlim([ENV_MIN_X, ENV_MIN_X + ENV_WIDTH])
+        ax.set_ylim([ENV_MIN_Y, ENV_MIN_Y + ENV_HEIGHT])
     plt.show()
 
 def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controller_type=None):
     executed_path = [init_state]
     curr_state = init_state
+    """
     path = [
         (-2.5, 7.5), 
         (-2.0, 7.5),
@@ -41,8 +47,10 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
         (-1.0, 7.0),
         (-1.0, 6.5)
         ]
+    """
     for i, temp_aim in enumerate(path):
         while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
+            log.debug("-----------------------------")
             if controller_type == ControllerType.P:
                 difference = np.array(temp_aim) - curr_state
                 P = 0.1
@@ -55,36 +63,31 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
                     a0 = gp_sim.a0,
                     )
                 f, alpha = mpc.run()
-                print(f"f: {f}, alpha: {alpha}")
-                desired_speed = np.array([gp_sim.a0 * f[0] * np.cos(alpha[0]), gp_sim.a0 * f[0] * np.sin(alpha[0])])
-                print(f"desired speed: {desired_speed}")
-
-                if verbose:
-                    print(f"rest_path: {mpc.path}")
+                f = f[0]
+                alpha = alpha[0]
+                desired_speed = np.array([gp_sim.a0 * f * np.cos(alpha), gp_sim.a0 * f * np.sin(alpha)])
 
             f_t = np.sqrt(desired_speed[0]**2 + desired_speed[1]**2) / gp_sim.a0
             f_t *= 10
             # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
+            log.debug(f"alpha before corrected: {alpha}")
             alpha = alpha_and_f_d[0]
-            
-            log.debug("-----------------------------")
-            log.debug(f"past state: {curr_state}")
-            log.debug(f"desired speed: {desired_speed}")
-            log.debug(f"speed's angle {np.arctan2(desired_speed[1], desired_speed[0])}")
-            #alpha = np.arctan2(desired_speed[1], desired_speed[0])
-            log.debug(f"alpha: {alpha}")
+            log.debug(f"alpha after corrected: {alpha}")
             log.debug(f"f_t: {f_t}")
-
+            
+            log.debug(f"desired speed: {desired_speed}")
+            log.debug(f"past state: {curr_state}")
 
             env.step(f_t, alpha)
             past_state = curr_state
             curr_state = env.last_pos
-            log.debug(f"curr_state: {curr_state}")
-            log.debug(f"state difference: {np.array(curr_state) - np.array(past_state)}")
+            log.debug(f"next_state: {curr_state}")
             log.debug("-----------------------------")
 
             executed_path.append(curr_state)
+            if LOGGER_LEVEL == logging.DEBUG:
+                plot(obstacles, path[0], path[-1], path, executed_path, curr_pose = curr_state)
 
     plot(obstacles, path[0], path[-1], path, executed_path)
 
@@ -120,7 +123,7 @@ def main():
         init = curr_state,
         noise_var = NOISE,
         a0 = a0_sim,
-        is_mismatched = True)
+        is_mismatched = False)
 
     controller(curr_state, to_be_followed_path, gp_sim, env, OBSTACLES, verbose = False, controller_type = CONTROLLER_TYPE)
 
