@@ -143,8 +143,12 @@ class MPC():
         )
 
         m.options.SOLVER = 3
-
-        m.solve(disp=False)
+        try:
+            m.solve(disp=False)
+        except:
+            log.error("The optimization failed!")
+            log.error("The path is: " + str(self.path) + " and the current position is: " + str(self.curr_position))
+            raise Exception("The optimization failed!")
         log.debug(f'the used path is: {self.path}')
         log.debug(f'lets check the f {f[0].value[0]}')
         log.debug('lets check the positions')

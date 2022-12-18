@@ -55,6 +55,9 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
                 difference = np.array(temp_aim) - curr_state
                 P = 0.1
                 desired_speed = P * difference
+                f = np.sqrt(desired_speed[0]**2 + desired_speed[1]**2) / gp_sim.a0
+                f *= 10
+                # get the alpha value for this speed
             elif controller_type == ControllerType.MPC:
                 rest_path = path[i:] if i != 0 else path
                 mpc = MPC(
@@ -62,27 +65,29 @@ def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controll
                     curr_position = curr_state,
                     a0 = gp_sim.a0,
                     )
-                f, alpha = mpc.run()
+                try:
+                    f, alpha = mpc.run()
+                except:
+                    log.error("MPC failed")
+                    plot(obstacles, path[0], path[-1], path, executed_path, curr_pose = curr_state)
+                    return
                 f = f[0]
                 alpha = alpha[0]
                 desired_speed = np.array([gp_sim.a0 * f * np.cos(alpha), gp_sim.a0 * f * np.sin(alpha)])
 
-            f_t = np.sqrt(desired_speed[0]**2 + desired_speed[1]**2) / gp_sim.a0
-            f_t *= 10
-            # get the alpha value for this speed
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
             log.debug(f"alpha before corrected: {alpha}")
             alpha = alpha_and_f_d[0]
             log.debug(f"alpha after corrected: {alpha}")
-            log.debug(f"f_t: {f_t}")
+            log.debug(f"f_t: {f}")
             
             log.debug(f"desired speed: {desired_speed}")
             log.debug(f"past state: {curr_state}")
 
-            env.step(f_t, alpha)
+            env.step(f, alpha)
             past_state = curr_state
             curr_state = env.last_pos
-            log.debug(f"next_state: {curr_state}")
+            log.warning(f"curr state: {curr_state}")
             log.debug("-----------------------------")
 
             executed_path.append(curr_state)
