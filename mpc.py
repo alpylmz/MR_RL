@@ -137,8 +137,8 @@ class MPC():
 
         # objective function
         m.Obj(
-            # MPC_W_U * np.sum([a0 * f[i] for i in range(prediction_horizon)])
-            # + 
+            MPC_W_U * np.sum([(a0 * f[i])**2 for i in range(prediction_horizon)])
+            + 
             MPC_W_P * np.sum((np.array(np.reshape(q, (prediction_horizon, 2))) - np.array(self.path))**2)
         )
 
