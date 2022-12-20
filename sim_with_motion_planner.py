@@ -36,65 +36,71 @@ def plot(obstacles, start_point, goal_point, to_be_followed_path, executed_path,
         ax.set_ylim([ENV_MIN_Y, ENV_MIN_Y + ENV_HEIGHT])
     plt.show()
 
-def controller(init_state, path, gp_sim, env, obstacles, verbose=False, controller_type=None):
-    executed_path = [init_state]
-    curr_state = init_state
-    """
-    path = [
-        (-2.5, 7.5), 
-        (-2.0, 7.5),
-        (-1.0, 7.5),
-        (-1.0, 7.0),
-        (-1.0, 6.5)
-        ]
-    """
-    for i, temp_aim in enumerate(path):
-        while get_distance(curr_state[0], curr_state[1], temp_aim[0], temp_aim[1]) > ACCEPTED_DISTANCE:
-            log.debug("-----------------------------")
-            if controller_type == ControllerType.P:
-                difference = np.array(temp_aim) - curr_state
-                P = 0.1
-                desired_speed = P * difference
-                f = np.sqrt(desired_speed[0]**2 + desired_speed[1]**2) / gp_sim.a0
-                f *= 10
-                # get the alpha value for this speed
-            elif controller_type == ControllerType.MPC:
-                rest_path = path[i:] if i != 0 else path
-                mpc = MPC(
-                    path = rest_path, 
-                    curr_position = curr_state,
-                    a0 = gp_sim.a0,
-                    )
-                try:
-                    f, alpha = mpc.run()
-                except:
-                    log.error("MPC failed")
-                    plot(obstacles, path[0], path[-1], path, executed_path, curr_pose = curr_state)
-                    return
-                f = f[0]
-                alpha = alpha[0]
-                desired_speed = np.array([gp_sim.a0 * f * np.cos(alpha), gp_sim.a0 * f * np.sin(alpha)])
+def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, controller_type=None):
+    executed_paths = []
+    for i in range(NUMBER_OF_AGENTS):
+        executed_paths.append([init_states[i]])
+    curr_states = []
+    for i in range(NUMBER_OF_AGENTS):
+        curr_states.append(init_states[i])
+
+    # the first point is the start point, so skipping it!
+    path_indexes = [1] * NUMBER_OF_AGENTS
+    reached_agent_count = 0
+    # while not all the agents reached their goal!!!!!!!!!
+    while True:
+        if reached_agent_count == NUMBER_OF_AGENTS:
+            break
+        for i in range(NUMBER_OF_AGENTS):
+            if len(paths[i]) == path_indexes[i]:
+                # agent i reached its goal
+                reached_agent_count += 1
+                log.info(f"agent {i} reached its goal")
+                continue
+            rest_path = paths[i][path_indexes[i]:] if path_indexes[i] != 0 else paths[i]
+            mpc = MPC(
+                path = rest_path, 
+                curr_position = curr_states[i],
+                a0 = gp_sim.a0,
+                )
+            try:
+                f, alpha = mpc.run()
+            except:
+                log.error(f"MPC failed for agent {i}")
+                plot(obstacles, paths[i][0], paths[i][-1], paths[i], executed_paths[i], curr_pose = curr_states[i])
+                return
+
+            f = f[0]
+            alpha = alpha[0]
+            desired_speed = np.array([gp_sim.a0 * f * np.cos(alpha), gp_sim.a0 * f * np.sin(alpha)])
 
             alpha_and_f_d, muX, muY, sigX, sigY = find_alpha_corrected(desired_speed, gp_sim)
-            log.debug(f"alpha before corrected: {alpha}")
+            log.debug(f"alpha before corrected: {alpha} for agent {i}")
             alpha = alpha_and_f_d[0]
-            log.debug(f"alpha after corrected: {alpha}")
-            log.debug(f"f_t: {f}")
-            
-            log.debug(f"desired speed: {desired_speed}")
-            log.debug(f"past state: {curr_state}")
+            log.debug(f"alpha after corrected: {alpha} for agent {i}")
+            log.debug(f"f_t: {f} for agent {i}")
+
+            log.debug(f"desired speed: {desired_speed} for agent {i}")
+            log.debug(f"past state: {curr_states[i]} for agent {i}")
 
             env.step(f, alpha)
-            past_state = curr_state
-            curr_state = env.last_pos
-            log.warning(f"curr state: {curr_state}")
+            curr_states[i] = env.last_positions[i]
+            log.warning(f"current state: {curr_states[i]} for agent {i}")
+
+            executed_paths[i].append(curr_states[i])
+
+            if LOGGER_LEVEL == logging.DEBUG:
+                plot(obstacles, paths[i][0], paths[i][-1], paths[i], executed_paths[i], curr_pose = curr_states[i])
+            
+            log.debug(f"distance from goal: {get_distance(curr_states[i][0], curr_states[i][1], paths[i][path_indexes[i]][0], paths[i][path_indexes[i]][1])} for agent {i}")
+            if get_distance(curr_states[i][0], curr_states[i][1], paths[i][path_indexes[i]][0], paths[i][path_indexes[i]][1]) < ACCEPTED_DISTANCE:
+                path_indexes[i] += 1
+
             log.debug("-----------------------------")
 
-            executed_path.append(curr_state)
-            if LOGGER_LEVEL == logging.DEBUG:
-                plot(obstacles, path[0], path[-1], path, executed_path, curr_pose = curr_state)
 
-    plot(obstacles, path[0], path[-1], path, executed_path)
+    # NEED TO UPDATE THIS !!!! TODO
+    plot(obstacles, paths[0][0], paths[0][-1], paths[0], executed_paths[0])
 
         
 def main():
@@ -102,35 +108,35 @@ def main():
 
     execute_idle_action(gp_sim, noise_var = NOISE)
     a0_sim = execute_learn_action(gp_sim, noise_var = NOISE, plot = True)
-
     ### We learned the noise and a0, so now it is time to create the test environment!
-    rrt = RRT(
-        ROBOT_START_X, 
-        ROBOT_START_Y, 
-        ROBOT_GOAL_X, 
-        ROBOT_GOAL_Y, 
-        RRT_STEP_SIZE, 
-        RRT_REWIRE_DISTANCE,
-        RRT_MAX_ITER, 
-        ENV_MIN_X, 
-        ENV_MIN_Y, 
-        ENV_WIDTH,
-        ENV_HEIGHT, 
-        OBSTACLES)
 
-    to_be_followed_path = rrt.RRTStar(plot = False, rewire = True, repeat = True)
+    paths = []
+    for i in range(NUMBER_OF_AGENTS):
+        rrt = RRT(
+            ROBOTS_START_X[i], 
+            ROBOTS_START_Y[i], 
+            ROBOTS_GOAL_X[i], 
+            ROBOTS_GOAL_Y[i], 
+            RRT_STEP_SIZE, 
+            RRT_REWIRE_DISTANCE,
+            RRT_MAX_ITER, 
+            ENV_MIN_X, 
+            ENV_MIN_Y, 
+            ENV_WIDTH,
+            ENV_HEIGHT, 
+            OBSTACLES)
 
-    print(to_be_followed_path)
-
-    curr_state = np.array([ROBOT_START_X, ROBOT_START_Y])
-    env = MR_Env()
+        paths.append(rrt.RRTStar(plot = False, rewire = True, repeat = True))
+    
+    curr_states = [np.array([ROBOTS_START_X[i], ROBOTS_START_Y[i]])]
+    env = MR_Env(number_of_agents = NUMBER_OF_AGENTS)
     env.reset(
-        init = curr_state,
+        init = curr_states,
         noise_var = NOISE,
         a0 = a0_sim,
         is_mismatched = False)
 
-    controller(curr_state, to_be_followed_path, gp_sim, env, OBSTACLES, verbose = False, controller_type = CONTROLLER_TYPE)
+    controller(curr_states, paths, gp_sim, env, OBSTACLES, verbose = False, controller_type = CONTROLLER_TYPE)
 
 
 if __name__ == "__main__":

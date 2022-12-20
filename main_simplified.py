@@ -13,6 +13,7 @@ MAGNETIC_FIELD_FREQ = 4
 a0_def = 1.5
 SIMULATION_FREQ_IN_HZ = 30
 
+# since it is assumed that the robots are identical, we only use one robot for these actions here!
 def execute_idle_action(gp_sim: GP.LearningModule, noise_var: float = 0.0):
 
     step_count = 3 * SIMULATION_FREQ_IN_HZ
@@ -20,7 +21,7 @@ def execute_idle_action(gp_sim: GP.LearningModule, noise_var: float = 0.0):
 
     #first we will do absolutely nothing to try and calculate the drift term
     px_idle,py_idle,alpha_idle,time_idle,freq_idle = run_sim(actions_idle,
-                                                                init_pos = np.array([0,0]),
+                                                                init_pos = [np.array([0,0])],
                                                                 noise_var = noise_vars[i],
                                                                 a0=a0_def,is_mismatched=True)
 
