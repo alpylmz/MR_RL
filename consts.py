@@ -12,7 +12,7 @@ MAGNETIC_FIELD_FREQ = 2
 # we cannot control the speed, we can only control the direction of the speed
 # therefore, we need to accept a bigger accepted distance for now
 ACCEPTED_DISTANCE = 0.1
-NOISE = 0.0
+NOISE = 1.0
 CONTROLLER_TYPE = ControllerType.MPC
 
 # MPC consts
@@ -29,10 +29,10 @@ TIME_STEP = 1.0
 STEP_SIZE = 0.1
 
 # Environment variables
-ROBOTS_START_X = [-2.5]
-ROBOTS_START_Y = [7.5]
-ROBOTS_GOAL_X = [7.5]
-ROBOTS_GOAL_Y = [-7.5]
+ROBOTS_START_X = [-2.5, -1.5]
+ROBOTS_START_Y = [7.5, 7.5]
+ROBOTS_GOAL_X = [7.5, 7.5]
+ROBOTS_GOAL_Y = [-7.5, -7.5]
 ENV_MIN_X = -10
 ENV_MIN_Y = -10
 ENV_WIDTH = 20
@@ -50,4 +50,4 @@ RRT_MAX_ITER = 5000
 
 LOGGER_LEVEL = logging.WARNING
 
-NUMBER_OF_AGENTS = 1
+NUMBER_OF_AGENTS = 2

@@ -3,6 +3,7 @@
 import numpy as np
 from scipy.integrate import RK45
 
+from consts import NUMBER_OF_AGENTS
 from typing import Tuple, List
 
 class Simulator:
@@ -65,9 +66,11 @@ class Simulator:
         self.current_action = np.array([f_t, alpha_t])
         # TODO: If any of the integrators is not finished, then it should be finished?
         # TODO: Or maybe we should put a different condition here?
-        while not (self.integrators[0].status == 'finished'):
-            for i in range(self.number_of_agents):
+        for i in range(self.number_of_agents):
+            print(i)
+            while not (self.integrators[i].status == 'finished'):
                 self.integrators[i].step()
+                
 
         for i in range(self.number_of_agents):
             self.last_states[i] = self.integrators[i].y
@@ -111,6 +114,10 @@ class Simulator:
         Output:
             state_prime: the derivative of the state, x and y velocity
         """
+        print("simulate for agent {}".format(i))
+        # currently we assume that all the robots are identical
+        #if i != 0:
+        #    return self.state_primes[i]
         f_t = self.current_action[0]
         alpha_t = self.current_action[1]    
         
@@ -121,14 +128,21 @@ class Simulator:
         if self.is_mismatched:
             # TODO: why sigma/4?
             a0 = self.a0_linear(f_t, sigma/4)
-            dx = a0 * f_t  * np.cos(alpha_t + 0.1) + np.random.normal(mu, sigma, 1)[0] + 0.2
-            dy = a0 * f_t  * np.sin(alpha_t + 0.1) + np.random.normal(mu, sigma, 1)[0] - 0.1
+            dx = a0 * f_t  * np.cos(alpha_t + 0.1) + 0.2
+            dy = a0 * f_t  * np.sin(alpha_t + 0.1) - 0.1
         else:
-            dx = a0 * f_t  * np.cos(alpha_t) + np.random.normal(mu, sigma, 1)[0] 
-            dy = a0 * f_t  * np.sin(alpha_t) + np.random.normal(mu, sigma, 1)[0] 
+            dx = a0 * f_t  * np.cos(alpha_t) 
+            dy = a0 * f_t  * np.sin(alpha_t) 
 
-        # currently we assume that all the robots are identical
-        self.state_primes = [np.array([dx, dy]) for _ in range(self.number_of_agents)]
+        self.state_primes = [
+            np.array(
+                [
+                    dx + np.random.normal(mu, sigma, 1)[0], 
+                    dy + np.random.normal(mu, sigma, 1)[0]
+                ]
+            )
+            for _ in range(self.number_of_agents)
+        ]
         return self.state_primes[i]
 
     def scipy_runge_kutta(

@@ -32,7 +32,6 @@ class MR_Env(Env):
         self.type = type
         self.action_dim = action_dim
         self.number_of_agents = number_of_agents
-        print(number_of_agents)
 
         # assert type == 'continuous' or type == 'discrete', 'type must be continuous or discrete'
         # assert action_dim > 0 and action_dim <=2, 'action_dim must be 1 or 2'
@@ -71,7 +70,7 @@ class MR_Env(Env):
             [510, -510], 
             [510, 510]]
 
-        self.simulator = Simulator()
+        self.simulator = Simulator(number_of_agents = self.number_of_agents)
         
         self.last_positions = [np.zeros(2) for _ in range(self.number_of_agents)]
         # TODO: Why init_goal and not just goal?
@@ -230,6 +229,7 @@ class MR_Env(Env):
         # TODO: Implement this method
         states = []
         for i in range(self.number_of_agents):
+            #print("getting state for agent ", i)
             states.append(self.simulator.get_state(i))
         if self.MR_data is not None:
             if self.MR_data.iterations > 0:
