@@ -4,7 +4,7 @@ from colorthief import ColorThief
 THRESHOLD = 30
 
 # read a.jpg
-img = ColorThief("frame.jpg")
+img = ColorThief("original frame.jpg")
 
 # find the dominant color
 dominant_color = img.get_color(quality=1)
