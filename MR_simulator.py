@@ -119,6 +119,7 @@ class Simulator:
         #if i != 0:
         #    return self.state_primes[i]
         f_t = self.current_action[0]
+        # TODO: we need to recalculate alpha for each!!!!!!!!!!
         alpha_t = self.current_action[1]    
         
         mu, sigma = 0, self.noise_var # mean and standard deviation

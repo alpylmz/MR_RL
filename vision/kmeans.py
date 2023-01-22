@@ -91,6 +91,8 @@ for i in tqdm(range(len(img))):
 cv2.imshow("original", cv2.imread(frame_name))
 cv2.imshow("kmeans", img)
 cv2.waitKey(0)
+while True:
+    continue
 
 
 
