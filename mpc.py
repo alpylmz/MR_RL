@@ -26,7 +26,9 @@ class MPC():
         a0: float,
         ):
         self.curr_position = curr_position
+        log.debug(f"input path: {path}")
         self.path = self.discretize_path(path, curr_position)[:MPC_PREDICTION_HORIZON]
+        log.debug(f"discretized path: {self.path}")
         self.a0 = a0
 
     def discretize_path(

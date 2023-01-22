@@ -9,7 +9,7 @@ from MR_viewer import Viewer
 from MR_simulator import Simulator
 from plot_utils import save_frames_as_gif
 
-from typing import Tuple
+from typing import Tuple, List
 """
 TODO :
 - Reward Function w/logical specs?
@@ -24,41 +24,58 @@ REWARD_STEP = -0.1
 class MR_Env(Env):
     def __init__(
         self, 
-        type='continuous', 
-        action_dim = 2
+        type = 'continuous', 
+        action_dim = 2,
+        number_of_agents = None
         ):
 
         self.type = type
         self.action_dim = action_dim
+        self.number_of_agents = number_of_agents
 
         # assert type == 'continuous' or type == 'discrete', 'type must be continuous or discrete'
         # assert action_dim > 0 and action_dim <=2, 'action_dim must be 1 or 2'
         
-        self.action_space = spaces.Box(
-            low = np.array([0, 0]), 
-            high = np.array([20, np.pi*2]))
-        self.observation_space = spaces.Box(
-            low = np.array([-5000, -5000, -5000, -5000, 0]), 
-            high = np.array([5000, 5000, 5000, 5000, 80000])) # x,y,x_target,y_target,distance
-        self.init_space = spaces.Box(
-            low = np.array([100, 100]), 
-            high = np.array([120, 120]))
-        self.init_goal_space = spaces.Box(
-            low = np.array([-31, -31]), 
-            high = np.array([-32, -32]))
+        self.action_spaces = [
+            spaces.Box(
+                low = np.array([0, 0]), 
+                high = np.array([20, np.pi*2])
+            )
+            for _ in range(self.number_of_agents)
+        ]
+        self.observation_spaces = [
+            spaces.Box(
+                low = np.array([-5000, -5000, -5000, -5000, 0]),
+                high = np.array([5000, 5000, 5000, 5000, 80000])
+            )
+            for _ in range(self.number_of_agents)
+        ]
+        self.init_spaces = [
+            spaces.Box(
+                low = np.array([100, 100]),
+                high = np.array([120, 120])
+            )
+            for _ in range(self.number_of_agents)
+        ]
+        self.init_goal_spaces = [
+            spaces.Box(
+                low = np.array([-31, -31]),
+                high = np.array([-32, -32])
+            )
+            for _ in range(self.number_of_agents)
+        ]
         self.borders = [ 
             [-510, 510], 
             [-510, -510], 
             [510, -510], 
             [510, 510]]
 
-        self.simulator = Simulator()
+        self.simulator = Simulator(number_of_agents = self.number_of_agents)
         
-        self.test_performance = False
-        self.last_pos = np.zeros(2)
+        self.last_positions = [np.zeros(2) for _ in range(self.number_of_agents)]
         # TODO: Why init_goal and not just goal?
-        self.init_goal = np.zeros(2)
-        self.last_action = np.zeros(self.action_dim)
+        self.init_goals = [np.zeros(2) for _ in range(self.number_of_agents)]
+        self.last_actions = [np.zeros(self.action_dim) for _ in range(self.number_of_agents)]
         
         self.number_loop = 0  # loops in the screen -> used to plot
         self.counter = 0
@@ -68,7 +85,7 @@ class MR_Env(Env):
         self.viewer = None
         self.MR_data = None
         self.name_experiment = None
-        self.state_prime = None
+        self.state_primes = [None for _ in range(self.number_of_agents)]
 
     def step(
         self, 
@@ -85,21 +102,24 @@ class MR_Env(Env):
         """
         # According to the action stace a different kind of action is selected
         self.counter += 1
-        state = self.simulator.step(f_t, alpha_t)
-        self.state_prime = self.simulator.state_prime
+        states = self.simulator.step(f_t, alpha_t)
+        # TODO: Implement this method
+        self.state_primes = self.simulator.state_primes
 
         # convert simulator states into observable states
-        obs = self.convert_state_to_observable(state, self.init_goal) 
+        obss = [self.convert_state_to_observable(state, self.init_goals[j]) for j, state in enumerate(states)]
         
-        self.last_pos = [state[0], state[1]]
-        self.last_action = np.array([f_t, alpha_t])
+        self.last_positions = [[state[0], state[1]] for state in states]
+        self.last_actions = np.array([f_t, alpha_t])
 
         if self.MR_data is not None:
             # TODO: why 10?
             rew = 10 # self.calculate_reward(obs=obs)
-            self.MR_data.new_transition(state, obs, self.last_action, rew)
+            # TODO Need to update this method!
+            self.MR_data.new_transition(states, obss, self.last_action, rew)
         
-        done = self.should_end(obs)
+        # TODO: Implement this method
+        done = self.should_end(obss)
         return done
     
     def convert_state_to_observable(
@@ -143,9 +163,10 @@ class MR_Env(Env):
         else:
             return REWARD_STEP # self.min_dist2goal/d
 
+    # TODO: Implement this method, currently only looking to the first agent!!!!!
     def should_end(
         self, 
-        obs: Tuple[float, float, float, float, float]
+        obss: List[Tuple[float, float, float, float, float]]
         ) -> bool:
         """
         This method finds out whether we are at the end of episode
@@ -154,9 +175,10 @@ class MR_Env(Env):
         Output:
             done (boolean): whether it’s time to reset the environment again.
         """
-        d = obs[4]
+        agent_num = 0
+        d = obss[agent_num][4]
         # smashed into a wall or reached to the max timesteps
-        if not self.observation_space.contains(obs) or self.counter > self.max_timesteps:
+        if not self.observation_spaces[agent_num].contains(obss[agent_num]) or self.counter > self.max_timesteps:
             if self.viewer is not None:
                 self.viewer.end_episode()
             if self.MR_data is not None:
@@ -168,17 +190,18 @@ class MR_Env(Env):
         else:
             return False
 
+    # TODO: Implement this method
     # TODO: What is this????
     def set_goal(self,init):
         # self.init_goal = self.init_goal_space.sample()
         # while np.linalg.norm( self.init_goal - init ) < self.min_dist2goal :
         #     self.init_goal = self.init_space.sample()
         #     # print("uh")
-        return self.init_goal
+        return self.init_goals
 
     def reset(
         self, 
-        init: Tuple[float, float] = None, 
+        init: List[Tuple[float, float]] = None, 
         noise_var = 1, 
         a0 = 1, 
         is_mismatched = False
@@ -188,33 +211,39 @@ class MR_Env(Env):
             init = self.init_space.sample()
             
         print("starting positions")
-        print(init.shape)
+        for i in range(self.number_of_agents):
+            print(init[i].shape)
         # TODO: Check this function?
         self.set_goal(init)
         
         self.simulator.noise_var = noise_var
         self.simulator.a0 = a0
         self.simulator.reset_start_pos(init)
-        self.init_goal = self.init_space.sample()
+        self.init_goals = [self.init_spaces[i].sample() for i in range(self.number_of_agents)]
         self.simulator.is_mismatched = is_mismatched
         
-        self.last_pos = init
+        self.last_positions = init
         self.counter = 0
         # print('Reseting position')
         # print( "goal_loc ", self.goal_loc ,"init_pos",self.last_pos)
-        state = self.simulator.get_state()
+        # TODO: Implement this method
+        states = []
+        for i in range(self.number_of_agents):
+            #print("getting state for agent ", i)
+            states.append(self.simulator.get_state(i))
         if self.MR_data is not None:
             if self.MR_data.iterations > 0:
                 self.MR_data.save_experiment(self.name_experiment)
+            # TODO: Update this method
             self.MR_data.new_iter(
-                                state, 
-                                self.convert_state_to_observable(state, self.init_goal), 
+                                states, 
+                                [self.convert_state_to_observable(state, self.init_goals[j]) for j, state in enumerate(states)], 
                                 np.zeros(len(self.last_action)), 
                                 np.array([0])
                                 )
         if self.viewer is not None:
             self.viewer.end_episode()
-        return self.convert_state_to_observable(state, self.init_goal)
+        return [self.convert_state_to_observable(state, self.init_goals[j]) for j, state in enumerate(states)]
 
     def render(self):
         if self.viewer is None:

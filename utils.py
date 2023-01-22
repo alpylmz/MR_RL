@@ -58,7 +58,7 @@ def readfile(
 
 def run_sim(
     actions: List[Tuple[float, float]],
-    init_pos: Tuple[float, float] = None,
+    init_pos: List[Tuple[float, float]] = None,
     noise_var: int = 1,
     a0: int = 1, 
     is_mismatched: bool = False
@@ -86,7 +86,7 @@ def run_sim(
     """
     state_prime = np.empty((0, 2))
     states      = np.empty((0, 2))
-    env         = MR_Env()
+    env         = MR_Env(number_of_agents = 1)
     state       = env.reset(
                         init = init_pos,
                         noise_var = noise_var,
@@ -98,8 +98,8 @@ def run_sim(
     # state_prime = np.append(state_prime, np.array([0,0]), axis=0)
     for action in actions:
         env.step(action[0], action[1])
-        states      = np.append(states, np.array([env.last_pos]), axis=0)
-        state_prime = np.append(state_prime, np.array([env.state_prime]), axis=0)
+        states      = np.append(states, np.array([env.last_positions[0]]), axis=0)
+        state_prime = np.append(state_prime, np.array([env.state_primes[0]]), axis=0)
     X       = states[:,0]
     Y       = states[:,1]
     alpha   = actions[:,1]

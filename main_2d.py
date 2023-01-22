@@ -26,7 +26,7 @@ def execute_idle_action(gp_sim: GP.LearningModule, noise_var = 0.0):
     #first we will do absolutely nothing to try and calculate the drift term
     px_idle, py_idle, alpha_idle, time_idle, freq_idle = run_sim(
                                                             actions_idle,
-                                                            init_pos = np.array([0, 0]),
+                                                            init_pos = [np.array([0, 0])],
                                                             noise_var = noise_var,
                                                             a0 = A0_DEF,
                                                             is_mismatched = False
@@ -67,7 +67,7 @@ def execute_learn_action(gp_sim: GP.LearningModule, noise_var = 0.0, plot = True
     # THIS IS WHAT THE SIMULATION ACTUALLY GIVES US -- model mismatch && noise
     x_sim, y_sim, alpha_sim, time_sim, freq_sim = run_sim(
                                                         actions_learn,
-                                                        init_pos = np.array([0, 0]),
+                                                        init_pos = [np.array([0, 0])],
                                                         noise_var = noise_var,
                                                         a0 = A0_DEF,
                                                         is_mismatched = False
@@ -83,7 +83,7 @@ def execute_learn_action(gp_sim: GP.LearningModule, noise_var = 0.0, plot = True
     # THIS CALCULATES THE DESIRED TRAJECTORY FROM OUR a0 ESTIMATE
     x_desired, y_desired, alpha_desired, time_desired, freq_desired = run_sim(
                                                                     actions_learn,
-                                                                    init_pos = np.array([0,0]),
+                                                                    init_pos = [np.array([0,0])],
                                                                     noise_var = 0.0,
                                                                     a0 = a0_sim,
                                                                     is_mismatched = False
