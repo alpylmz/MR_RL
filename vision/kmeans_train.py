@@ -6,11 +6,12 @@ from sklearn.cluster import KMeans
 from kmeansinfo import KmeansInfo
 
 
-frame_name = "original frame 2.png"
+frame_name = "images/original_frame_cut.png"
 number_of_clusters = 4
 
 
 def apply_kmeans(frame_name = None, folder_name = None):
+    print("reading image(s)")
     if frame_name is not None:
         img = cv2.imread(frame_name)
 
@@ -41,18 +42,21 @@ def apply_kmeans(frame_name = None, folder_name = None):
                 for j in range(len(img[i])):
                     kmeans_list.append(img[i][j])
 
+    print("applying kmeans")
     kmeans = KMeans(n_clusters = number_of_clusters, random_state = 0).fit(kmeans_list)
 
     return kmeans
 
 def identify_cluster_colors(kmeans):
+    print(f"identify {number_of_clusters} cluster colors")
+    print("be careful that the color order is BGR")
     cluster_centers = kmeans.cluster_centers_
     blue_center = None
     yellow_center = None
-    red_center = None
+    red_centers = []
     background_centers = None
 
-    print("enter 0 for blue, 1 for yellow, 2 for red, 3 for background")
+    print("enter 0 for blue, 1 for yellow, 2 for background, red will be computed later")
 
     for i in range(len(cluster_centers)):
         print("cluster center: ", cluster_centers[i])
@@ -60,7 +64,7 @@ def identify_cluster_colors(kmeans):
         while True:
             try:
                 color = int(input("enter color: "))
-                if color < 0 or color > 3:
+                if color < 0 or color > 2:
                     print("invalid input")
                     continue
                 break
@@ -73,12 +77,16 @@ def identify_cluster_colors(kmeans):
         elif color == 1:
             yellow_center = cluster_centers[i]
         elif color == 2:
-            red_center = cluster_centers[i]
-        elif color == 3:
             background_centers = cluster_centers[i]
 
-    return KmeansInfo(cluster_centers, blue_center, yellow_center, red_center, background_centers)
+    # red computation
+    red_of_blue = blue_center[2]
+    red_of_yellow = yellow_center[2]
+    red_centers.append([blue_center[0], blue_center[1], 256 - red_of_blue])
+    red_centers.append([yellow_center[0], yellow_center[1], 256 - red_of_yellow])
 
+
+    return KmeansInfo(cluster_centers, blue_center, yellow_center, red_centers, background_centers)
 
 
 kmeans = apply_kmeans(frame_name = frame_name)
