@@ -105,12 +105,14 @@ contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_S
 
 for contour in contours:
     try:
-        ellipse = cv2.fitEllipse(contour)
+        #ellipse = cv2.fitEllipse(contour)
+        hull = cv2.convexHull(contour)
     except cv2.error:
         continue
 
     # draw that into the img
-    cv2.ellipse(img, ellipse, (0, 255, 255), 1)
+    #cv2.ellipse(img, ellipse, (0, 255, 255), 1)
+    cv2.drawContours(img, [hull], 0, (0, 255, 255), 1)
 
 
 # find countours
@@ -120,12 +122,14 @@ contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_S
 
 for contour in contours:
     try:
-        ellipse = cv2.fitEllipse(contour)
+        #ellipse = cv2.fitEllipse(contour)
+        hull = cv2.convexHull(contour)
     except cv2.error:
         continue
 
     # draw that into the img
-    cv2.ellipse(img, ellipse, (255, 0, 0), 1)
+    #cv2.ellipse(img, ellipse, (255, 0, 0), 1)
+    cv2.drawContours(img, [hull], 0, (255, 0, 0), 1)
 
 # find countours
 red_masked_img = cv2.cvtColor(red_masked_img, cv2.COLOR_BGR2GRAY)
@@ -134,17 +138,21 @@ contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_S
 
 for contour in contours:
     try:
-        ellipse = cv2.fitEllipse(contour)
+        #ellipse = cv2.fitEllipse(contour)
+        hull = cv2.convexHull(contour)
     except cv2.error:
         continue
 
     # draw that into the img
-    cv2.ellipse(img, ellipse, (0, 0, 255), 1)
+    #cv2.ellipse(img, ellipse, (0, 0, 255), 1)
+    cv2.drawContours(img, [hull], 0, (0, 0, 255), 1)
 
 
+
+"""
 # Show keypoints
 cv2.imshow("Original", img)
 cv2.imshow("Ellipsed", black_img)
 #cv2.imshow("Keypoints", im_with_keypoints)
 cv2.waitKey(0)
-
+"""
