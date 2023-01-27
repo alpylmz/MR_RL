@@ -1,45 +1,53 @@
 from kmeansinfo import KmeansInfo
 import numpy as np
 
-def pick_closest_center(kmeans: KmeansInfo, color: list):
-    # TODO NEED TO OPTIMIZE THIS!!!!
+def pick_closest_center(
+    blue_matrix: np.ndarray,
+    yellow_matrix: np.ndarray,
+    background_matrix0: np.ndarray,
+    background_matrix1: np.ndarray,
+    red_matrix0: np.ndarray,
+    #red_matrix1: np.ndarray
+    ) -> np.ndarray:
     """
     Pick the closest center to the color.
     I dont want to use yellow's red center currently!
     """
 
-    distance_to_blue = np.linalg.norm(np.array(color) - np.array(kmeans.blue_center))
-    distance_to_yellow = np.linalg.norm(np.array(color) - np.array(kmeans.yellow_center))
-    distance_to_background0 = np.linalg.norm(np.array(color) - np.array(kmeans.background_centers[0]))
-    distance_to_background1 = np.linalg.norm(np.array(color) - np.array(kmeans.background_centers[1]))
-    distance_to_red0 = np.linalg.norm(np.array(color) - np.array(kmeans.red_centers[0]))
-    #distance_to_red1 = np.linalg.norm(np.array(color) - np.array(kmeans.red_centers[1]))
+    distance_to_blue_matrix = np.linalg.norm(blue_matrix , axis=2)
+    distance_to_yellow_matrix = np.linalg.norm(yellow_matrix , axis=2)
+    distance_to_background0_matrix = np.linalg.norm(background_matrix0 , axis=2)
+    distance_to_background1_matrix = np.linalg.norm(background_matrix1 , axis=2)
+    distance_to_red0_matrix = np.linalg.norm(red_matrix0 , axis=2)
+    #distance_to_red1_matrix = np.linalg.norm(red_matrix1 , axis=2)
 
-    # find the minimum distance
-    min_distance = min(
-        distance_to_blue, 
-        distance_to_yellow, 
-        distance_to_background0, 
-        distance_to_background1, 
-        distance_to_red0, 
-        #distance_to_red1
-        )
+    min_distance_matrix = np.ndarray((len(distance_to_blue_matrix), len(distance_to_blue_matrix[0])))
+    result_matrix = np.ndarray((len(distance_to_blue_matrix), len(distance_to_blue_matrix[0]), 3))
+    np.minimum(distance_to_blue_matrix, distance_to_yellow_matrix, out=min_distance_matrix)
+    np.minimum(min_distance_matrix, distance_to_background0_matrix, out=min_distance_matrix)
+    np.minimum(min_distance_matrix, distance_to_background1_matrix, out=min_distance_matrix)
+    np.minimum(min_distance_matrix, distance_to_red0_matrix, out=min_distance_matrix)
+    #np.minimum(min_distance_matrix, distance_to_red1_matrix, out=min_distance_matrix)
 
-    # return the color that corresponds to the minimum distance
-    if min_distance == distance_to_blue:
-        # blue is whole blue!
-        return [255, 0, 0]
-    elif min_distance == distance_to_yellow:
-        # yellow is whole yellow!
-        return [0, 255, 255]
-    elif min_distance == distance_to_background0 or min_distance == distance_to_background1:
-        # background is black!!!!
-        return [0, 0, 0]
-    elif min_distance == distance_to_red0:
-        # red is whole red!
-        return [0, 0, 255]
-    else:
-        raise Exception("something went wrong in pick_closest_center")
+    height_of_matrix = len(distance_to_blue_matrix)
+    width_of_matrix = len(distance_to_blue_matrix[0])
+    for i in range(height_of_matrix):
+        for j in range(width_of_matrix):
+            if distance_to_blue_matrix[i][j] == min_distance_matrix[i][j]:
+                result_matrix[i][j] = [255, 0, 0]
+            elif distance_to_yellow_matrix[i][j] == min_distance_matrix[i][j]:
+                result_matrix[i][j] = [0, 255, 255]
+            elif distance_to_background0_matrix[i][j] == min_distance_matrix[i][j] or \
+                distance_to_background1_matrix[i][j] == min_distance_matrix[i][j]:
+                result_matrix[i][j] = [0, 0, 0]
+            elif distance_to_red0_matrix[i][j] == min_distance_matrix[i][j]:
+                result_matrix[i][j] = [0, 0, 255]
+            #elif distance_to_red0_matrix[i][j] == min_distance_matrix[i][j] or \
+            #    distance_to_red1_matrix[i][j] == min_distance_matrix[i][j]:
+            #    result_matrix[i][j] = [0, 0, 255]
+
+    return result_matrix
+
 
 
 
