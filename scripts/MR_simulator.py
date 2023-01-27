@@ -66,7 +66,6 @@ class Simulator:
         # TODO: If any of the integrators is not finished, then it should be finished?
         # TODO: Or maybe we should put a different condition here?
         for i in range(self.number_of_agents):
-            print(i)
             while not (self.integrators[i].status == 'finished'):
                 self.integrators[i].step()
                 
