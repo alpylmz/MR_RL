@@ -1,7 +1,7 @@
 import numpy as np
 from consts import *
 import logging
-from MR_RL_logger import mr_rl_logger as log
+from MR_logger import mr_logger as log
 
 from main_2d import execute_idle_action, execute_learn_action
 import Learning_module_2d as GP
@@ -97,7 +97,7 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
 
             env.step(f, alpha)
             curr_states[i] = env.last_positions[i]
-            log.warning(f"current state: {curr_states[i]} for agent {i}")
+            log.debug(f"current state: {curr_states[i]} for agent {i}")
 
             executed_paths[i].append(curr_states[i])
 
