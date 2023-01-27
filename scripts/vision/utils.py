@@ -22,7 +22,7 @@ def pick_closest_center(
     #distance_to_red1_matrix = np.linalg.norm(red_matrix1 , axis=2)
 
     min_distance_matrix = np.ndarray((len(distance_to_blue_matrix), len(distance_to_blue_matrix[0])))
-    result_matrix = np.ndarray((len(distance_to_blue_matrix), len(distance_to_blue_matrix[0]), 3))
+    result_matrix = np.ndarray((len(distance_to_blue_matrix), len(distance_to_blue_matrix[0]), 3), dtype=np.uint8)
     np.minimum(distance_to_blue_matrix, distance_to_yellow_matrix, out=min_distance_matrix)
     np.minimum(min_distance_matrix, distance_to_background0_matrix, out=min_distance_matrix)
     np.minimum(min_distance_matrix, distance_to_background1_matrix, out=min_distance_matrix)
