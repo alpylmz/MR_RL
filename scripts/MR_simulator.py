@@ -3,7 +3,6 @@
 import numpy as np
 from scipy.integrate import RK45
 
-from consts import NUMBER_OF_AGENTS
 from typing import Tuple, List
 
 class Simulator:
@@ -114,7 +113,6 @@ class Simulator:
         Output:
             state_prime: the derivative of the state, x and y velocity
         """
-        print("simulate for agent {}".format(i))
         # currently we assume that all the robots are identical
         #if i != 0:
         #    return self.state_primes[i]

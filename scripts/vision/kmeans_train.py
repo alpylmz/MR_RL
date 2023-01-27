@@ -10,44 +10,38 @@ frame_name = "images/original_frame_cut.png"
 number_of_clusters = 4
 
 
-def apply_kmeans(frame_name = None, folder_name = None):
-    print("reading image(s)")
-    if frame_name is not None:
-        img = cv2.imread(frame_name)
+def apply_kmeans(
+    frame_name: str = None, 
+    folder_name: str = None
+    ) -> KMeans:
 
+    print("reading image(s)")
+    imgs = []
+    if frame_name is not None:
+        imgs.append(cv2.imread(frame_name))
         if img is None:
             print("Image not found")
             exit()
-
-        kmeans_list = []
-        for i in range(len(img)):
-            for j in range(len(img[i])):
-                kmeans_list.append(img[i][j])
-
     elif folder_name is not None:
-        print("Did not test this yet")
+        print("Did not test this yet, be careful")
         # read all the images in the folder
         # and apply kmeans to all of them
         # and save the kmeans info to a file
-
-        imgs = []
         for file_name in os.listdir(folder_name):
             if file_name.endswith(".jpg") or file_name.endswith(".png"):
                 img = cv2.imread(folder_name + "/" + file_name)
                 imgs.append(img)
 
-        kmeans_list = []
-        for img in imgs:
-            for i in range(len(img)):
-                for j in range(len(img[i])):
-                    kmeans_list.append(img[i][j])
+    kmeans_list = []
+    for img in imgs:
+        for i in range(len(img)):
+            for j in range(len(img[i])):
+                kmeans_list.append(img[i][j])
 
     print("applying kmeans")
-    kmeans = KMeans(n_clusters = number_of_clusters, random_state = 0).fit(kmeans_list)
-
-    return kmeans
-
-def identify_cluster_colors(kmeans):
+    return KMeans(n_clusters = number_of_clusters, random_state = 0).fit(kmeans_list)
+    
+def identify_cluster_colors(kmeans: KMeans) -> KmeansInfo:
     print(f"identify {number_of_clusters} cluster colors")
     print("be careful that the color order is BGR")
     cluster_centers = kmeans.cluster_centers_
@@ -64,13 +58,13 @@ def identify_cluster_colors(kmeans):
         while True:
             try:
                 color = int(input("enter color: "))
-                if color < 0 or color > 2:
-                    print("invalid input")
-                    continue
-                break
             except:
                 print("invalid input")
                 continue
+            if color < 0 or color > 2:
+                print("invalid input")
+                continue
+            break
         
         if color == 0:
             blue_center = cluster_centers[i]

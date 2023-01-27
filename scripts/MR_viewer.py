@@ -1,8 +1,6 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 import turtle
-import math
-import tkinter
 
 class Viewer:
     def __init__(self):

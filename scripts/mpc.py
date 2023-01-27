@@ -1,5 +1,5 @@
 from gekko import GEKKO
-from MR_RL_logger import mr_rl_logger as log
+from MR_logger import mr_logger as log
 
 import numpy as np
 from consts import *
@@ -40,12 +40,6 @@ class MPC():
         if len(path) == 0:
             log.warn("The path returned empty from the discretize_path function!")
             return []
-        # TODO THESE ARE NOT USE CURRENTLY!
-        elif len(path) == 1:
-            line = LineString([curr_pos, path[0]])
-        else:
-            line = LineString([path[0], path[1]])
-        closest_point = line.interpolate(line.project(Point(curr_pos)))
         
         return_path = []
         path_index = 0
