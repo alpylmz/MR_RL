@@ -28,8 +28,8 @@ class ColoredFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 
-mr_rl_logger = logging.getLogger("MR_RL_logger")
-mr_rl_logger.setLevel(LOGGER_LEVEL)
+mr_logger = logging.getLogger("MR_logger")
+mr_logger.setLevel(LOGGER_LEVEL)
 ch = logging.StreamHandler()
 ch.setFormatter(ColoredFormatter())
-mr_rl_logger.addHandler(ch)
+mr_logger.addHandler(ch)
