@@ -33,10 +33,11 @@ def visualize_frame(kmeans_info, frame_name: str = None, frame: np.ndarray = Non
         #color_minus_red1
     )
     #cv2.imshow("original", cv2.imread(frame_name))
-    #cv2.imshow("clusters", img)
+    cv2.imshow("original", frame)
+    cv2.imshow("clusters", img)
     # save img
     #cv2.imwrite("images/clustered_frame_23_jan.png", img)
-    #cv2.waitKey(0)
+    cv2.waitKey(0)
     return img
 
 def visualize_video(kmeans_info, video_name):
@@ -49,7 +50,7 @@ def visualize_video(kmeans_info, video_name):
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) * 2)
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter('videos/output2.mp4', fourcc, 20.0, (width, height))
+    out = cv2.VideoWriter('videos/output3.mp4', fourcc, 20.0, (width, height))
 
     # get total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -79,6 +80,6 @@ def visualize_video(kmeans_info, video_name):
             break
 
 # read video videos/example.mov
-visualize_video(kmeans_info, "videos/example2.mov")
+visualize_video(kmeans_info, "videos/end_cut.mp4")
 #visualize_frame(kmeans_info, frame_name)
 

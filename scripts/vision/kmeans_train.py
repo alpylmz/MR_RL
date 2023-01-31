@@ -2,17 +2,20 @@ import pickle
 import cv2
 import os
 from sklearn.cluster import KMeans
+from utils import cut_frame_unwanted_part
 
 from kmeansinfo import KmeansInfo
 
 
 frame_name = "images/original_frame_cut.png"
+video_name = "videos/end_cut.mp4"
 number_of_clusters = 4
 
 
 def apply_kmeans(
     frame_name: str = None, 
-    folder_name: str = None
+    folder_name: str = None,
+    frames = None
     ) -> KMeans:
 
     print("reading image(s)")
@@ -31,15 +34,30 @@ def apply_kmeans(
             if file_name.endswith(".jpg") or file_name.endswith(".png"):
                 img = cv2.imread(folder_name + "/" + file_name)
                 imgs.append(img)
+    else:
+        imgs = frames
+
 
     kmeans_list = []
     for img in imgs:
         for i in range(len(img)):
             for j in range(len(img[i])):
-                kmeans_list.append(img[i][j])
+                # cut unwanted black places
+                """
+                print(i, j)
+                if i <= 25:
+                    if j <= 115 or len(img[i]) - j <= 180:
+                        continue
+                if len(img) - i <= 43 and len(img[i]) - j <= 170:
+                    continue
+                print("not skipped")
+                """
+                # skipping the cutted part
+                if (img[i][j] != [0, 0, 0]).all():
+                    kmeans_list.append(img[i][j])
 
     print("applying kmeans")
-    return KMeans(n_clusters = number_of_clusters, random_state = 0).fit(kmeans_list)
+    return KMeans(n_clusters = number_of_clusters, random_state = 0, verbose = 1).fit(kmeans_list)
     
 def identify_cluster_colors(kmeans: KMeans) -> KmeansInfo:
     print(f"identify {number_of_clusters} cluster colors")
@@ -61,9 +79,6 @@ def identify_cluster_colors(kmeans: KMeans) -> KmeansInfo:
             except:
                 print("invalid input")
                 continue
-            if color < 0 or color > 2:
-                print("invalid input")
-                continue
             break
         
         if color == 0:
@@ -82,8 +97,16 @@ def identify_cluster_colors(kmeans: KMeans) -> KmeansInfo:
 
     return KmeansInfo(cluster_centers, blue_center, yellow_center, red_centers, background_centers)
 
+# read video and put all of the frames into 
+frames = []
+cap = cv2.VideoCapture(video_name)
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    frames.append(cut_frame_unwanted_part(frame))
 
-kmeans = apply_kmeans(frame_name = frame_name)
+kmeans = apply_kmeans(frames = frames)
 kmeans_info = identify_cluster_colors(kmeans)
 pickle.dump(kmeans_info, open("kmeans_info.pkl", "wb"))
 

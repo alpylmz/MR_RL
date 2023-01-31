@@ -50,7 +50,27 @@ def pick_closest_center(
 
 
 
-
+def cut_frame_unwanted_part(frame: np.ndarray) -> np.ndarray:
+    """
+    Cut the frame to the wanted part.
+    """
+    
+    # cut the upperleft corner, by making it whole black
+    frame[0:25, 0:115] = [0, 0, 0]
+    # cut the upperright corner, by making it whole black
+    width = len(frame[0])
+    frame[0:25, width-180:width] = [0, 0, 0]
+    # cut the lowerleft corner, by making it whole black
+    height = len(frame)
+    frame[height-43:height, width-170:width] = [0, 0, 0]
+    """
+    import cv2
+    cv2.imshow("frame", frame)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    exit()
+    """
+    return frame
 
 
 
