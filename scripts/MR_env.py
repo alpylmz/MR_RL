@@ -210,9 +210,10 @@ class MR_Env(Env):
         if init is None: 
             init = self.init_space.sample()
             
-        print("starting positions")
-        for i in range(self.number_of_agents):
-            print(init[i].shape)
+        print("BE CAREFUL THAT THIS METHOD MAY NOT SUPPORT EVERY MULTI_ROBOT ENVIRONMENT")
+        #print("starting positions")
+        #for i in range(self.number_of_agents):
+        #    print(init[i].shape)
         # TODO: Check this function?
         self.set_goal(init)
         

@@ -26,9 +26,9 @@ class MPC():
         a0: float,
         ):
         self.curr_position = curr_position
-        log.debug(f"input path: {path}")
+        log.debug(f"input path: {path[:MPC_PREDICTION_HORIZON]}")
         self.path = self.discretize_path(path, curr_position)[:MPC_PREDICTION_HORIZON]
-        log.debug(f"discretized path: {self.path}")
+        log.debug(f"discretized path: {self.path[:MPC_PREDICTION_HORIZON]}")
         self.a0 = a0
 
     def discretize_path(
@@ -43,7 +43,7 @@ class MPC():
         
         return_path = []
         path_index = 0
-        curr_point = np.array(curr_pos)
+        curr_point = np.array(curr_pos, dtype=np.float64)
         while len(return_path) < MPC_PREDICTION_HORIZON and path_index < len(path):
             next_point = np.array(path[path_index])
             while get_distance(curr_point[0], curr_point[1], next_point[0], next_point[1]) > STEP_SIZE:
@@ -135,7 +135,7 @@ class MPC():
         m.Obj(
             MPC_W_U * np.sum([(a0 * f[i])**2 for i in range(prediction_horizon)])
             + 
-            MPC_W_P * np.sum((np.array(np.reshape(q, (prediction_horizon, 2))) - np.array(self.path))**2)
+            MPC_W_P * np.sum((np.array(np.reshape(q, (prediction_horizon, 2))) - np.array(self.path))**4)
         )
 
         m.options.SOLVER = 3
@@ -144,11 +144,13 @@ class MPC():
         except:
             log.error("The optimization failed!")
             log.error("The path is: " + str(self.path) + " and the current position is: " + str(self.curr_position))
+            # try again!
+            import random
+            self.curr_position[0] += random.uniform(-0.01, 0.01)
+            self.curr_position[1] += random.uniform(-0.01, 0.01)
+            return self.run()
             raise Exception("The optimization failed!")
-        log.debug(f'the used path is: {self.path}')
-        log.debug(f'lets check the f {f[0].value[0]}')
-        log.debug('lets check the positions')
-        log.debug(f"{self.curr_position[0]}, {self.curr_position[1]}")
+        log.debug(f"The next {MPC_PREDICTION_HORIZON} points are: ")
         for i in range(1, prediction_horizon):
             log.debug(f"{q[i][0].value[0]}, {q[i][1].value[0]}")
         

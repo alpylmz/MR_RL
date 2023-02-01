@@ -25,15 +25,14 @@ def fit_contour(
     _, thresh = cv2.threshold(img, 127, 255, 0)
     contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    """
+    
     if contour_color == ContourColor.YELLOW:
         draw_color = (0, 255, 255)
     elif contour_color == ContourColor.BLUE:
         draw_color = (255, 0, 0)
     elif contour_color == ContourColor.RED:
         draw_color = (0, 0, 255)
-    """
-
+    
     for contour in contours:
         try:
             if contour_type == ContourType.ELLIPSE:
@@ -42,10 +41,17 @@ def fit_contour(
                 shapes.append(ellipse)
             elif contour_type == ContourType.CONVEX_HULL:
                 hull = cv2.convexHull(contour)
-                #cv2.drawContours(original_img, [hull], 0, draw_color, 1)
+                cv2.drawContours(original_img, [hull], 0, draw_color, 1)
+                # flatten and change the types to float64 hull
+                hull = np.array(hull).reshape(-1, 2).astype(np.float64)
                 shapes.append(hull)
         except cv2.error:
             continue
+
+        last_shape = shapes[-1]
+        if len(last_shape) <= 2:
+            print("found shape with len <= 2: ", last_shape)
+            shapes.pop()
 
     return shapes
 
@@ -98,15 +104,16 @@ def execute_cell_separation_from_img(img: np.ndarray) -> np.ndarray:
     fit_contour(red_masked_img, img, ContourType.CONVEX_HULL, ContourColor.RED)
     """
     res = \
-        fit_contour(yellow_masked_img, None, ContourType.CONVEX_HULL, None) + \
-        fit_contour(blue_masked_img, None, ContourType.CONVEX_HULL, None) + \
-        fit_contour(red_masked_img, None, ContourType.CONVEX_HULL, None)
+        fit_contour(yellow_masked_img, img, ContourType.CONVEX_HULL, ContourColor.YELLOW) + \
+        fit_contour(blue_masked_img, img, ContourType.CONVEX_HULL, ContourColor.BLUE) + \
+        fit_contour(red_masked_img, img, ContourType.CONVEX_HULL, ContourColor.RED)
     
-    print(res)
+    # Show keypoints
+    cv2.imshow("", img)
+    #cv2.imshow("Keypoints", im_with_keypoints)
+    #cv2.waitKey(0)
+    
+    return res
 
 
-# Show keypoints
-#cv2.imshow("", img)
-#cv2.imshow("Keypoints", im_with_keypoints)
-#cv2.waitKey(0)
     

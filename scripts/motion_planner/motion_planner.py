@@ -21,9 +21,6 @@ class Node:
     def __repr__(self):
         return f"Node({self.x}, {self.y}, {self.parent})"
 
-    def change_parent(self, new_parent):
-        self.parent = new_parent
-
     def get_parent(self):
         return self.parent
 
@@ -154,7 +151,9 @@ class RRT:
         Runs the RRT* algorithm.
         """
         iteration_count = self.max_iter
-        for _ in tqdm(range(iteration_count)):
+        for i in tqdm(range(iteration_count)):
+            #if (i % 1000) == 0:
+            #    self.plot(None, plot_only_path = False)
             x, y = self.get_random_point()
             nearest_node = self.get_nearest_node(x, y)
             new_x, new_y = self.get_new_point(nearest_node, x, y)
@@ -170,16 +169,30 @@ class RRT:
                 return path
             # Rewire
             if rewire:
+                parent_node = new_node.get_parent().get_parent()
+                # TODO I may also check if the parent node is close enough to the new node, it actually changes a whole lot!
+                if parent_node is None:
+                    continue
+                if self.intersects_polygon(parent_node.x, parent_node.y, new_x, new_y):
+                    continue
+                else:
+                    new_node.set_parent(parent_node)
+                    new_node.cost = parent_node.cost + get_distance(parent_node.x, parent_node.y, new_x, new_y)
+                    # delete intermediate node only if it is not a parent of another node! TODO
+                    #self.nodes.remove(new_node.get_parent())
+                """
                 for node in self.nodes:
                     if node == new_node:
                         continue
+                    # TODO: you forgot to delete the intermediate node!!!! 
                     if get_distance(node.x, node.y, new_x, new_y) < self.rewire_distance and \
                         node.cost > new_node.cost + get_distance(node.x, node.y, new_x, new_y):
                         if self.intersects_polygon(new_x, new_y, node.x, node.y):
                             continue
                         node.set_parent(new_node)
-                        node.cost = new_node.cost + get_distance(node.x, node.y, new_x, new_y)      
-
+                        node.cost = new_node.cost + get_distance(node.x, node.y, new_x, new_y)  
+                        continue   
+                """
         if repeat:
             # delete all nodes except first one
             self.nodes = self.nodes[:1]
@@ -202,6 +215,7 @@ class RRT:
 
         # print all nodes
         if not plot_only_path:
+            print("Plotting all nodes")
             for node in self.nodes:
                 if node.parent is not None:
                     ax.plot([node.x, node.parent.x], [node.y, node.parent.y], c='b')
@@ -216,7 +230,7 @@ class RRT:
             ax.scatter(self.goal_x, self.goal_y, color="green")
             plt.show()
         else:
-            print("No path found")
+            #print("No path found")
             plt.show()
 
 def main():
