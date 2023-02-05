@@ -143,7 +143,7 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
     # NEED TO UPDATE THIS !!!! TODO
     plot(obstacles, paths[0], paths[-1], paths, executed_paths)
 
-        
+
 def main():
     global OBSTACLES
     gp_sim = GP.LearningModule()
@@ -162,26 +162,37 @@ def main():
     plot_only_obstacles(all_obstacles)
     log.warning("Number of obstacles found: " + str(len(all_obstacles)))
 
-
     paths = []
+    times = []
+    import time
     log.warning("Creating paths...")
-    for i in range(NUMBER_OF_AGENTS):
-        rrt = RRT(
-            ROBOTS_START_X[i], 
-            ROBOTS_START_Y[i], 
-            ROBOTS_GOAL_X[i], 
-            ROBOTS_GOAL_Y[i], 
-            RRT_STEP_SIZE, 
-            RRT_REWIRE_DISTANCE,
-            RRT_MAX_ITER, 
-            ENV_MIN_X, 
-            ENV_MIN_Y, 
-            ENV_WIDTH,
-            ENV_HEIGHT, 
-            OBSTACLES)
+    for q in range(100):
+        start = time.time()
+        for i in range(NUMBER_OF_AGENTS):
+            rrt = RRT(
+                ROBOTS_START_X[i], 
+                ROBOTS_START_Y[i], 
+                ROBOTS_GOAL_X[i], 
+                ROBOTS_GOAL_Y[i], 
+                RRT_STEP_SIZE, 
+                RRT_REWIRE_DISTANCE,
+                RRT_MAX_ITER, 
+                ENV_MIN_X, 
+                ENV_MIN_Y, 
+                ENV_WIDTH,
+                ENV_HEIGHT, 
+                OBSTACLES,
+                img)
+        
+            paths.append(rrt.RRTStar(plot = False, rewire = False, repeat = True))
+        end = time.time()
+        times.append(end - start)
+    print("average time:", sum(times) / len(times))
+    print("max time:", max(times))
+    print("min time:", min(times))
+    exit(2)
 
-        paths.append(rrt.RRTStar(plot = True, rewire = False, repeat = True))
-    
+
     # save paths for debugging
     import pickle
     with open("paths2.pkl", "wb") as f:

@@ -1,3 +1,4 @@
+import numpy as np
 import random
 import math
 from typing import List, Tuple
@@ -49,6 +50,7 @@ class RRT:
                 env_width: float,
                 env_height: float,
                 obstacles: List[Tuple[float, float, float, float]],
+                image_frame: np.ndarray = None
                 ):
         """
         Initializes the RRT* algorithm.
@@ -79,6 +81,7 @@ class RRT:
         self.env_width = env_width
         self.env_height = env_height
         self.obstacles = obstacles
+        self.image_frame = image_frame
 
     def get_nearest_node(self, x, y):
         """
@@ -110,32 +113,45 @@ class RRT:
         new_y = nearest_node.y + self.step_size * math.sin(theta)
         return new_x, new_y
 
-    def intersects_rectangle(self, x1, y1, x2, y2):
-        """
-        Returns true if the line segment between the two points intersects an rectangle.
-        """
-        for obstacle in self.obstacles:
-            min_x = obstacle[0]
-            min_y = obstacle[1]
-            max_x = obstacle[0] + obstacle[2]
-            max_y = obstacle[1] + obstacle[3]
-            if  intersect((x1, y1), (x2, y2), (min_x, min_y), (max_x, min_y)) or \
-                intersect((x1, y1), (x2, y2), (max_x, min_y), (max_x, max_y)) or \
-                intersect((x1, y1), (x2, y2), (max_x, max_y), (min_x, max_y)) or \
-                intersect((x1, y1), (x2, y2), (min_x, max_y), (min_x, min_y)):
-                return True
-        return False
-
+    """
     def intersects_polygon(self, x1, y1, x2, y2):
-        """
-        Returns true if the line segment between the two points intersects an polygon.
-        """
+        #
+        #Returns true if the line segment between the two points intersects an polygon.
+        #
         for obstacle in self.obstacles:
             for i in range(len(obstacle)):
                 if intersect((x1, y1), (x2, y2), obstacle[i], obstacle[(i+1) % len(obstacle)]):
                     return True
         return False
-    
+    """
+
+    def intersects_polygon(self, x1, y1, x2, y2):
+        """
+        Returns true if the line segment between the two points intersects an polygon.
+        """
+        # Check the line segment coordinates in the image frame
+        # if the line segment's coordinates' values are all 0, then it does not intersect with any polygon
+
+        start_position = (int(x1), int(y1))
+        end_position = (int(x2), int(y2))
+
+        distance_between_points = np.sqrt((end_position[0] - start_position[0])**2 + (end_position[1] - start_position[1])**2)
+
+        # Get the coordinates of the line segment
+        x, y = np.linspace(start_position[0], end_position[0], int(distance_between_points*10)), np.linspace(start_position[1], end_position[1], int(distance_between_points * 10))
+        x, y = x.astype(int), y.astype(int)
+        points = np.vstack((x, y)).T
+
+        # Check if the line segment intersects with any polygon
+        for point in points:
+            if (point[0] < 0) or (point[0] >= self.image_frame.shape[0]) or (point[1] < 0) or (point[1] >= self.image_frame.shape[1]):
+                return True
+            if (self.image_frame[point[0]][point[1]] != [0, 0, 0]).all():
+                return True
+                
+        return False
+
+
     def get_path(self, node):
         """
         Returns the path from the start to the given node.
