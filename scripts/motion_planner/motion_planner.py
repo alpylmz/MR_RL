@@ -82,7 +82,7 @@ class RRT:
         self.env_height = env_height
         self.obstacles = obstacles
         self.image_frame = image_frame
-
+          
     def get_nearest_node(self, x, y):
         """
         Returns the nearest node to the given point.
@@ -90,9 +90,10 @@ class RRT:
         min_distance = float("inf")
         nearest_node = None
         for node in self.nodes:
-            distance = get_distance(node.x, node.y, x, y)
-            if distance < min_distance:
-                min_distance = distance
+            fake_distance = (node.x - x)**2 + (node.y - y)**2
+            #distance = get_distance(node.x, node.y, x, y)
+            if fake_distance < min_distance:
+                min_distance = fake_distance
                 nearest_node = node
         return nearest_node
 
@@ -113,18 +114,21 @@ class RRT:
         new_y = nearest_node.y + self.step_size * math.sin(theta)
         return new_x, new_y
 
-    """
-    def intersects_polygon(self, x1, y1, x2, y2):
-        #
-        #Returns true if the line segment between the two points intersects an polygon.
-        #
-        for obstacle in self.obstacles:
-            for i in range(len(obstacle)):
-                if intersect((x1, y1), (x2, y2), obstacle[i], obstacle[(i+1) % len(obstacle)]):
-                    return True
-        return False
-    """
+    def add_node(self, node):
+        """
+        Adds a node to the tree.
+        """
+        self.nodes.append(node)
+        #self.quad_tree.insert(node, (node.x, node.y, node.x, node.y))
 
+    def get_nearest_node_fast(self, x, y):
+        """
+        Returns the nearest node to the given point.
+        """
+        pass
+
+
+        
     def intersects_polygon(self, x1, y1, x2, y2):
         """
         Returns true if the line segment between the two points intersects an polygon.

@@ -121,10 +121,10 @@ class MPC():
 
         for i in range(1, prediction_horizon):
             m.Equation(
-                q[i][0] == q[i - 1][0] + f[i - 1] * a0 * m.cos(alpha[i - 1])
+                q[i][0] == q[i - 1][0] + f[i - 1] * a0 * m.cos(alpha[i - 1]) * 0.03
             )
             m.Equation(
-                q[i][1] == q[i - 1][1] + f[i - 1] * a0 * m.sin(alpha[i - 1])
+                q[i][1] == q[i - 1][1] + f[i - 1] * a0 * m.sin(alpha[i - 1]) * 0.03
             )
 
         # lets put a minimum velocity to force the optimizer to find a good solution

@@ -72,7 +72,9 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
     reached_agent_count = 0
     # while not all the agents reached their goal!!!!!!!!!
     number_of_agents_placeholder = 1
+    import time
     while True:
+        start = time.time()
         if reached_agent_count == number_of_agents_placeholder:
             break
         for i in range(NUMBER_OF_AGENTS):
@@ -116,6 +118,7 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
             env.step(f, alpha)
             curr_states[i] = env.last_positions[i]
             log.debug(f"current state: {curr_states[i]} for agent {i}")
+            log.debug(f"next_goal: {paths[i][path_indexes[i]]} for agent {i}\n")
 
             executed_paths[i].append(curr_states[i])
 
@@ -138,11 +141,11 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
                 #plot(obstacles, paths[0], paths[-1], paths, executed_paths)
 
             log.debug("-----------------------------")
-
+        end = time.time()
+        print(f"iteration time: {end - start}")
 
     # NEED TO UPDATE THIS !!!! TODO
     plot(obstacles, paths[0], paths[-1], paths, executed_paths)
-
 
 def main():
     global OBSTACLES
@@ -163,35 +166,23 @@ def main():
     log.warning("Number of obstacles found: " + str(len(all_obstacles)))
 
     paths = []
-    times = []
-    import time
-    log.warning("Creating paths...")
-    for q in range(100):
-        start = time.time()
-        for i in range(NUMBER_OF_AGENTS):
-            rrt = RRT(
-                ROBOTS_START_X[i], 
-                ROBOTS_START_Y[i], 
-                ROBOTS_GOAL_X[i], 
-                ROBOTS_GOAL_Y[i], 
-                RRT_STEP_SIZE, 
-                RRT_REWIRE_DISTANCE,
-                RRT_MAX_ITER, 
-                ENV_MIN_X, 
-                ENV_MIN_Y, 
-                ENV_WIDTH,
-                ENV_HEIGHT, 
-                OBSTACLES,
-                img)
-        
-            paths.append(rrt.RRTStar(plot = False, rewire = False, repeat = True))
-        end = time.time()
-        times.append(end - start)
-    print("average time:", sum(times) / len(times))
-    print("max time:", max(times))
-    print("min time:", min(times))
-    exit(2)
-
+    for i in range(NUMBER_OF_AGENTS):
+        rrt = RRT(
+            ROBOTS_START_X[i], 
+            ROBOTS_START_Y[i], 
+            ROBOTS_GOAL_X[i], 
+            ROBOTS_GOAL_Y[i], 
+            RRT_STEP_SIZE, 
+            RRT_REWIRE_DISTANCE,
+            RRT_MAX_ITER, 
+            ENV_MIN_X, 
+            ENV_MIN_Y, 
+            ENV_WIDTH,
+            ENV_HEIGHT, 
+            OBSTACLES,
+            img)
+    
+        paths.append(rrt.RRTStar(plot = False, rewire = False, repeat = True))
 
     # save paths for debugging
     import pickle
