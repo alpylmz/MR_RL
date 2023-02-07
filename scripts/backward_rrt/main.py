@@ -106,6 +106,9 @@ def main():
     time.sleep(1)
 
     # start backwards rrt here, and update the plot in every 100th iteration
+    i = 0
+    indexes_of_agent1 = []
+    indexes_of_agent2 = []
     while True:
         # get a random angle between 0 and 2pi
         theta = np.random.uniform(0, 2 * np.pi)
@@ -123,20 +126,47 @@ def main():
         agents[1].move(theta)
         print("Agent 2: ", agents[1].x, agents[1].y)
         # update the environment
-        agent_environments[0][find_index(agents[0].x, agents[0].y)] = 1
-        agent_environments[1][find_index(agents[1].x, agents[1].y)] = 1
-        environment[find_index(agents[0].x, agents[0].y) + find_index(agents[1].x, agents[1].y)] = 1
+        index_of_agent1 = find_index(agents[0].x, agents[0].y)
+        index_of_agent2 = find_index(agents[1].x, agents[1].y)
+        agent_environments[0][index_of_agent1] = 1
+        agent_environments[1][index_of_agent2] = 1
+        environment[index_of_agent1 + index_of_agent2] = 1
 
-        # update the plot
-        ax1.scatter(agents[0].x, agents[0].y, c='b')
-        ax2.scatter(agents[1].x, agents[1].y, c='b')
+        indexes_of_agent1.append(index_of_agent1)
+        indexes_of_agent2.append(index_of_agent2)
 
+        i += 1
 
-        plt.draw()
-        plt.pause(0.0001)
-        plt.show(block=False)
-        print("---------------------------------")
+        if i % 1000 == 0:
+            # update the plot
+            for index_of_agent1 in indexes_of_agent1:
+                ax1.scatter(
+                    inverse_index(
+                        index_of_agent1[0], 
+                        index_of_agent1[1])[0], 
+                    inverse_index(
+                        index_of_agent1[0], 
+                        index_of_agent1[1])[1], 
+                    c='b')
+            for index_of_agent2 in indexes_of_agent2:
+                ax2.scatter(
+                    inverse_index(
+                        index_of_agent2[0], 
+                        index_of_agent2[1])[0], 
+                    inverse_index(
+                        index_of_agent2[0], 
+                        index_of_agent2[1])[1], 
+                    c='b')
+            
 
+            plt.draw()
+            plt.pause(0.0001)
+            plt.show(block=False)
+            print("1000 iteration")
+            input("Press Enter to continue...")
+            print("---------------------------------")
+
+            i = 0
         
 
 
