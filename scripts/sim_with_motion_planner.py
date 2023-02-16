@@ -30,8 +30,18 @@ def plot(obstacles, start_points, goal_points, to_be_followed_paths, executed_pa
         ax.plot(goal_points[i][0], goal_points[i][1], 'go')
         to_be_followed_path = np.array(to_be_followed_paths[i])
         ax.plot(to_be_followed_path[:,0], to_be_followed_path[:,1], 'b')
+        # print executed_paths[i] as a set of points, by connecting them with lines
         executed_path = np.array(executed_paths[i])
-        ax.plot(executed_path[:,0], executed_path[:,1], 'r')
+        # plot them two by two
+        for j in range(len(executed_path) - 1):
+            if i == 0:
+                ax.plot([executed_path[j,0], executed_path[j+1,0]], [executed_path[j,1], executed_path[j+1,1]], 'r')
+            if i == 1:
+                ax.plot([executed_path[j,0], executed_path[j+1,0]], [executed_path[j,1], executed_path[j+1,1]], 'g')
+            if i == 2:
+                ax.plot([executed_path[j,0], executed_path[j+1,0]], [executed_path[j,1], executed_path[j+1,1]], 'y')
+            log.debug("plotting line from {} to {}".format(executed_path[j], executed_path[j+1]))
+
     # put boundaries
     """
     if LOGGER_LEVEL == logging.DEBUG:
@@ -72,16 +82,73 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
     reached_agent_count = 0
     # while not all the agents reached their goal!!!!!!!!!
     number_of_agents_placeholder = 1
-    import time
+    frequencies = [
+        [11, 5, 3],
+        [4, 2, 1],
+        [3, 1, 0.2]
+    ]
+    init_positions = [
+        [100, 100],
+        [200, 200],
+        [200, 100]
+    ]
+    current_positions = [
+        [100, 100],
+        [200, 200],
+        [200, 100]
+    ]
+    goal_positions = [
+        [200, -200],
+        [-100, 300],
+        [-100, 100]
+    ]
     while True:
-        start = time.time()
-        if reached_agent_count == number_of_agents_placeholder:
-            break
-        for i in range(NUMBER_OF_AGENTS):
-            if i == 0:
-                continue
-            curr_state = env.last_positions[i]
-            executed_paths[i].append(curr_state)
+        #if reached_agent_count == number_of_agents_placeholder:
+        #    break
+        for _ in range(4000):
+                
+            for f in frequencies:
+                t1 = -1
+                t2 = -1
+                t1 *= np.sum((np.array([position[0] for position in current_positions]) - np.array([position[0] for position in goal_positions])) * np.array(f))
+                t2 *= np.sum((np.array([position[1] for position in current_positions]) - np.array([position[1] for position in goal_positions])) * np.array(f))
+                #t1 *= np.sum((np.array(current_positions[::0]) - np.array(goal_positions[::0])) * np.array(f))
+                #t2 *= np.sum(np.array(current_positions[::1] - np.array(goal_positions[::1])) * np.array(f))
+
+                norm_f = np.linalg.norm(f)
+
+                t1 /= (norm_f ** 2)
+                t2 /= (norm_f ** 2)
+
+                alpha = np.arctan2(t2, t1)
+                application_time = np.sqrt(t1 ** 2 + t2 ** 2)
+
+                # I am not doing alpha correction here, because it wants desired speed
+                # but which agent's desired speed? I don't know!
+
+                # apply the action
+                for i in range(len(current_positions)):
+                    current_positions[i] += f[i] * application_time * np.array([np.cos(alpha), np.sin(alpha)])
+
+                # add the new position to the executed path
+                for i in range(len(current_positions)):
+                    executed_paths[i].append([current_positions[i][0], current_positions[i][1]])
+                    
+                
+                log.debug("current_positions", current_positions)
+                log.debug("goal_positions", goal_positions)
+                log.debug("executed_paths", executed_paths)
+
+        plot(
+            [], 
+            init_positions, 
+            goal_positions, [
+            [init_positions[0], goal_positions[0]],
+            [init_positions[1], goal_positions[1]],
+            [init_positions[2], goal_positions[2]]
+        ], executed_paths)
+
+        continue
 
         for i in range(number_of_agents_placeholder):
             if len(paths[i]) == path_indexes[i]:
@@ -141,8 +208,6 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
                 #plot(obstacles, paths[0], paths[-1], paths, executed_paths)
 
             log.debug("-----------------------------")
-        end = time.time()
-        print(f"iteration time: {end - start}")
 
     # NEED TO UPDATE THIS !!!! TODO
     plot(obstacles, paths[0], paths[-1], paths, executed_paths)
@@ -155,16 +220,16 @@ def main():
     a0_sim = execute_learn_action(gp_sim, noise_var = NOISE, plot = True)
     ### We learned the noise and a0, so now it is time to create the test environment!
 
-    log.warning("Analyzing the environment using image")
-    img = cv2.imread("vision/images/clustered_frame_23_jan.png")
-    all_obstacles = execute_cell_separation_from_img(img)
+    #log.warning("Analyzing the environment using image")
+    #img = cv2.imread("vision/images/clustered_frame_23_jan.png")
+    #all_obstacles = execute_cell_separation_from_img(img)
 
     #print("first obstacle in the all obstacles:", all_obstacles[0])
     #print("first obstacle in the const:", OBSTACLES[0])
-    OBSTACLES = all_obstacles
-    plot_only_obstacles(all_obstacles)
-    log.warning("Number of obstacles found: " + str(len(all_obstacles)))
-
+    #OBSTACLES = all_obstacles
+    #plot_only_obstacles(all_obstacles)
+    #log.warning("Number of obstacles found: " + str(len(all_obstacles)))
+    """
     paths = []
     for i in range(NUMBER_OF_AGENTS):
         rrt = RRT(
@@ -183,11 +248,11 @@ def main():
             img)
     
         paths.append(rrt.RRTStar(plot = False, rewire = False, repeat = True))
-
     # save paths for debugging
     import pickle
     with open("paths2.pkl", "wb") as f:
         pickle.dump(paths, f)
+    """
     
     #import pickle
     #with open("paths.pkl", "rb") as f:
@@ -220,7 +285,7 @@ def main():
         is_mismatched = False)
 
     log.warning("Starting controller...")
-    controller(curr_states, paths, gp_sim, env, OBSTACLES, verbose = False, controller_type = CONTROLLER_TYPE)
+    controller(curr_states, [], gp_sim, env, OBSTACLES, verbose = False, controller_type = CONTROLLER_TYPE)
 
 
 if __name__ == "__main__":
