@@ -1,0 +1,2 @@
+
+NUMBER_OF_AGENTS = 10
