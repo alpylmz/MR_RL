@@ -5,13 +5,38 @@ import random
 import os
 import json
 
-from utils import generate_random_frequencies, generate_random_positions
+from utils import generate_random_frequencies, generate_random_positions, generate_random_frequencies2N
 from const import *
 from time import time
 
-frequencies = generate_random_frequencies()
+frequencies = [
+    [4.0215, 3.8835, 3.561, 3.699, 3.5925], # freq 1
+    [5.9475, 6.735, 6.5565, 4.83975, 5.13225], # freq 5
+    [8.8935, 9.225, 9.912, 8.53875, 7.008], # freq 10
+    [12.5745, 10.848, 10.6785, 11.679, 8.54475], # freq 20
+    [16.218, 12.5205, 13.0635, 17.63475, 9.279], # freq 30
+]
+
+#frequencies = generate_random_frequencies2N()
 current_positions = generate_random_positions()
 goal_positions = generate_random_positions()
+
+# flatten the current positions and the goal positions
+current_positions_flat = [item for sublist in current_positions for item in sublist]
+goal_positions_flat = [item for sublist in goal_positions for item in sublist]
+diff = np.array(goal_positions_flat) - np.array(current_positions_flat)
+
+"""
+# take the inverse matrix of the frequencies
+inverse_frequencies = np.linalg.inv(np.array(frequencies))
+command = inverse_frequencies * diff
+
+print('frequencies:')
+print(frequencies)
+print("command:")
+print(command)
+exit()
+"""
 
 # open a folder for each experiment
 folder_name = f'experiments/experiment_{int(time())}'
