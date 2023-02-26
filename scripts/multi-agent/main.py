@@ -22,13 +22,15 @@ current_positions = generate_random_positions()
 #goal_positions = generate_random_positions()
 
 goal_positions = [
-    [50, 30],
-    [31, 44],
-    [38, 66],
-    [62, 66],
-    [69, 44]
+    [40, 30],
+    [60, 30],
+    [66.49, 49.02],
+    [50, 55.51],
+    [33.51, 49.02]
 ]
 plotted_alphas = []
+application_times = []
+total_distances = []
 
 # flatten the current positions and the goal positions
 current_positions_flat = [item for sublist in current_positions for item in sublist]
@@ -103,6 +105,7 @@ def main():
             alpha = np.arctan2(t2, t1)
             plotted_alphas.append(alpha)
             application_time = np.sqrt(t1 ** 2 + t2 ** 2)
+            application_times.append(application_time)
 
             # apply the action
             past_positions = copy.deepcopy(current_positions)
@@ -117,12 +120,11 @@ def main():
             '''    
             step_number += 1
         
+            """
             # calculate the total distance from the last important positions
             total_distance = 0
             for i in range(NUMBER_OF_AGENTS):
                 total_distance += np.linalg.norm(np.array(current_positions[i]) - np.array(last_important_positions[i]))
-
-            """
             # if the total distance is significant, we will save the plot
             if total_distance > (NUMBER_OF_AGENTS * 5):
                 # set the title of the plot as the step number
@@ -137,8 +139,9 @@ def main():
         for i in range(NUMBER_OF_AGENTS):
             total_distance += np.linalg.norm(np.array(current_positions[i]) - np.array(goal_positions[i]))
 
+        total_distances.append(total_distance)
         print(total_distance)
-        if total_distance < NUMBER_OF_AGENTS:
+        if total_distance < 0.1:
             break
 
 
@@ -147,6 +150,10 @@ def main():
         pickle.dump(movements, f)
     with open(f'plotted_alphas.pickle', 'wb') as f:
         pickle.dump(plotted_alphas, f)
+    with open(f'application_times.pickle', 'wb') as f:
+        pickle.dump(application_times, f)
+    with open(f'total_distances.pickle', 'wb') as f:
+        pickle.dump(total_distances, f)
 
     # we will convert the images to a video using the following command:
     # ffmpeg -framerate 30 -i "%d.png" exp.mp4
