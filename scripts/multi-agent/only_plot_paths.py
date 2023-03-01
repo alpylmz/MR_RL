@@ -38,7 +38,7 @@ plt.plot([goal_positions_x[0], goal_positions_x[-1]], [goal_positions_y[0], goal
 for i in range(NUMBER_OF_AGENTS):
     x = [position[0] for position in movements[i]]
     y = [position[1] for position in movements[i]]
-    plt.plot(x, y, c = colors_for_plots[i], linewidth = 0.3)
+    plt.plot(x, y, c = colors_for_plots[i], linewidth = 0.5)
 
 plt.grid()
 

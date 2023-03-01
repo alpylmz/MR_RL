@@ -10,11 +10,10 @@ from const import *
 from time import time
 
 frequencies = [
-    [4.0215, 3.8835, 3.561, 3.699, 3.5925], # freq 1
-    [5.9475, 6.735, 6.5565, 4.83975, 5.13225], # freq 5
-    [8.8935, 9.225, 9.912, 8.53875, 7.008], # freq 10
-    [12.5745, 10.848, 10.6785, 11.679, 8.54475], # freq 20
-    [16.218, 12.5205, 13.0635, 17.63475, 9.279], # freq 30
+    [4.0215, 3.5925, 3.561, 3.699], # freq 1
+    [5.9475, 5.13225, 6.5565, 4.83975], # freq 5
+    [8.8935, 7.008, 9.912, 8.53875], # freq 10
+    [12.5745, 10.5745, 10.6785, 11.679] # freq 20
 ]
 
 #frequencies = generate_random_frequencies2N()
@@ -22,11 +21,10 @@ current_positions = generate_random_positions()
 #goal_positions = generate_random_positions()
 
 goal_positions = [
-    [40, 30],
-    [60, 30],
-    [66.49, 49.02],
-    [50, 55.51],
-    [33.51, 49.02]
+    [15, 35],
+    [35, 35],
+    [35, 55],
+    [15, 55]
 ]
 plotted_alphas = []
 application_times = []
