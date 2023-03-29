@@ -244,9 +244,10 @@ def main():
             img_array[i][j][1] = img[i][j][1]
             img_array[i][j][2] = img[i][j][2]
 
-    print("img_array:", img_array)
+    import time
+    start_time = time.time()
     paths = []
-    rrt_fast.rrt(
+    a = rrt_fast.rrt(
         NUMBER_OF_AGENTS,
         ROBOTS_START_X,
         ROBOTS_START_Y,
@@ -261,7 +262,34 @@ def main():
         ENV_HEIGHT,
         list(img_array),
     )
+    print("time taken:", time.time() - start_time)
+    # the list a is elements of the form (configuration, parent id)
+    # configuration is a 2*Number_of_agents array
+    import matplotlib.pyplot as plt
+    import matplotlib
+    #print("a:", a)
 
+    # decide color array for n number of agents
+    colors = plt.cm.rainbow(np.linspace(0, 1, NUMBER_OF_AGENTS))
+
+    for element in a:
+        configuration = element[0]
+        parent_id = element[1]
+        if parent_id == -1:
+            continue
+        for i in range(NUMBER_OF_AGENTS):
+            #print("printing line")
+            #print("point 1:", configuration[i])
+            #print("point 2:", a[parent_id][0][i])
+            # draw a line between the two points
+            plt.plot([configuration[i][0], a[parent_id][0][i][0]], [configuration[i][1], a[parent_id][0][i][1]], color = colors[i])
+
+    # plot start and goal positions
+    for i in range(NUMBER_OF_AGENTS):
+        plt.plot(ROBOTS_START_X[i], ROBOTS_START_Y[i], 'ro')
+        plt.plot(ROBOTS_GOAL_X[i], ROBOTS_GOAL_Y[i], 'go')
+    plt.show()
+            
     """
     for i in range(NUMBER_OF_AGENTS):
         rrt = RRT(

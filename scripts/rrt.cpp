@@ -11,13 +11,15 @@ class Node{
     public:
         std::vector<std::vector<double>> configuration;
         Node* parent;
+        int id;
         
-        Node(std::vector<std::vector<double>> configuration, Node* parent){
+        Node(std::vector<std::vector<double>> configuration, Node* parent, int id){
             // copy the vector configuration
             for (int i = 0; i < configuration.size(); i++){
                 this->configuration.push_back(std::vector<double>{configuration[i][0], configuration[i][1]});
             }
             this->parent = parent;
+            this->id = id;
         }
 
         std::vector<std::vector<double>>* get_configuration(){
@@ -30,6 +32,16 @@ class Node{
 
         void set_parent(Node* parent){
             this->parent = parent;
+        }
+
+        int get_id(){
+            return this->id;
+        }
+
+        int get_parent_id(){
+            if (this->parent == nullptr)
+                return -1;
+            return this->parent->get_id();
         }
 };
 
@@ -57,7 +69,7 @@ Node* get_nearest_node(
     // WARNING: NOT SURE IF THIS IS CORRECT
     {
         Node* nearest_node = &nodes[0];
-        double nearest_node_distance = 0;
+        double nearest_node_distance = 100000000;
         for (int i = 0; i < nodes.size(); i++){
             double distance = 0;
             for (int j = 0; j < random_configuration.size(); j++){
@@ -101,51 +113,47 @@ bool check_for_collision(
         for (int i = 0; i < new_configuration.size(); i++){
             int x = new_configuration[i][0];
             int y = new_configuration[i][1];
-            if(img[x][y][0] != 0 || img[x][y][1] != 0 || img[x][y][2] != 0)
-                return true;
-            // check the neighbor cells
-            // do not forget to check the boundaries
-            if(x > 0) {
-                // x-1 y-1
-                // x-1 y
-                // x-1 y+1
-                if(y > 0){
-                    if(img[x-1][y-1][0] != 0 || img[x-1][y-1][1] != 0 || img[x-1][y-1][2] != 0)
-                        return true;
-                }
-                if(img[x-1][y][0] != 0 || img[x-1][y][1] != 0 || img[x-1][y][2] != 0)
+            //std::cout << "x: " << x << " y: " << y << std::endl;
+            //std::cout << "Boundaries are: " << img.size() << " " << img[0].size() << std::endl;
+            if(x > 0 && y > 0 && x < (img.size() - 1) && y < (img[0].size() - 1)){
+                //std::cout << "In the boundaries" << std::endl;
+                if(img[x][y][0] != 0 || img[x][y][1] != 0 || img[x][y][2] != 0){
+                    //std::cout << "Collision in " << x << " " << y << std::endl;
                     return true;
-                if(y < img[0].size() - 1){
-                    if(img[x-1][y+1][0] != 0 || img[x-1][y+1][1] != 0 || img[x-1][y+1][2] != 0)
-                        return true;
+                }
+                if(img[x-1][y-1][0] != 0 || img[x-1][y-1][1] != 0 || img[x-1][y-1][2] != 0){
+                    //std::cout << "Collision in " << x-1 << " " << y-1 << std::endl;
+                    return true;
+                }
+                if(img[x-1][y][0] != 0 || img[x-1][y][1] != 0 || img[x-1][y][2] != 0){
+                    //std::cout << "Collision in " << x-1 << " " << y << std::endl;
+                    return true;
+                }
+                if(img[x-1][y+1][0] != 0 || img[x-1][y+1][1] != 0 || img[x-1][y+1][2] != 0){
+                    //std::cout << "Collision in " << x-1 << " " << y+1 << std::endl;
+                    return true;
+                }
+                if(img[x+1][y-1][0] != 0 || img[x+1][y-1][1] != 0 || img[x+1][y-1][2] != 0){
+                    //std::cout << "Collision in " << x+1 << " " << y-1 << std::endl;
+                    return true;
+                }
+                if(img[x+1][y][0] != 0 || img[x+1][y][1] != 0 || img[x+1][y][2] != 0){
+                    //std::cout << "Collision in " << x+1 << " " << y << std::endl;
+                    return true;
+                }
+                if(img[x+1][y+1][0] != 0 || img[x+1][y+1][1] != 0 || img[x+1][y+1][2] != 0){
+                    //std::cout << "Collision in " << x+1 << " " << y+1 << std::endl;
+                    return true;
+                }
+                if(img[x][y-1][0] != 0 || img[x][y-1][1] != 0 || img[x][y-1][2] != 0){
+                    //std::cout << "Collision in " << x << " " << y-1 << std::endl;
+                    return true;
+                }
+                if(img[x][y+1][0] != 0 || img[x][y+1][1] != 0 || img[x][y+1][2] != 0){
+                    //std::cout << "Collision in " << x << " " << y+1 << std::endl;
+                    return true;
                 }
             }
-            if(x < img.size() - 1) {
-                // x+1 y-1
-                // x+1 y
-                // x+1 y+1
-                if(y > 0){
-                    if(img[x+1][y-1][0] != 0 || img[x+1][y-1][1] != 0 || img[x+1][y-1][2] != 0)
-                        return true;
-                }
-                if(img[x+1][y][0] != 0 || img[x+1][y][1] != 0 || img[x+1][y][2] != 0)
-                    return true;
-                if(y < img[0].size() - 1){
-                    if(img[x+1][y+1][0] != 0 || img[x+1][y+1][1] != 0 || img[x+1][y+1][2] != 0)
-                        return true;
-                }
-            }
-            if(y > 0){
-                // x y-1
-                if(img[x][y-1][0] != 0 || img[x][y-1][1] != 0 || img[x][y-1][2] != 0)
-                    return true;
-            }
-            if(y < img[0].size() - 1){
-                // x y+1
-                if(img[x][y+1][0] != 0 || img[x][y+1][1] != 0 || img[x][y+1][2] != 0)
-                    return true;
-            }
-            
             
 
             // now check for self collisions
@@ -153,8 +161,45 @@ bool check_for_collision(
         return false;
 }
 
+std::vector<std::tuple<std::vector<std::vector<double>>, int>> convert_nodes_to_list(
+    std::vector<Node> &nodes)
+    {
+        std::vector<std::vector<std::vector<double>>> configurations;
+        std::vector<int> parents;
+        for (int i = 0; i < nodes.size(); i++){
+            configurations.push_back(*nodes[i].get_configuration());
+            // find the index of the parent
+            int parent_index = nodes[i].get_parent_id();
+            parents.push_back(parent_index);
+        }
+        
+        std::vector<std::tuple<std::vector<std::vector<double>>, int>> nodes_list;
+        for (int i = 0; i < configurations.size(); i++){
+            nodes_list.push_back(std::tuple<std::vector<std::vector<double>>, int>(configurations[i], parents[i]));
+        }
+        return nodes_list;
+    }
 
-void rrt(
+bool check_if_arrived(
+    std::vector<std::vector<double>> &new_configuration,
+    std::vector<double> &robots_goal_x,
+    std::vector<double> &robots_goal_y,
+    int step_size)
+    {
+        // calculate the distance between the new configuration and the goal for each agent
+        double total_distance = 0;
+        for (int i = 0; i < new_configuration.size(); i++){
+            double distance = sqrt(pow(new_configuration[i][0] - robots_goal_x[i], 2) + pow(new_configuration[i][1] - robots_goal_y[i], 2));
+            total_distance += distance;
+        }
+        if (total_distance < step_size){
+            return true;
+        }
+        return false;
+    }
+
+
+std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
     int num_robots,
     std::vector<double> robots_start_x,
     std::vector<double> robots_start_y,
@@ -169,6 +214,7 @@ void rrt(
     int env_height,
     std::vector<std::vector<std::vector<int>>> &img)
     {
+        std::vector<std::tuple<std::vector<std::vector<double>>, int>> return_list;
         // merge robots start x and y into a vector of tuples
         std::vector<std::vector<double>> robots_start;
         for (int i = 0; i < num_robots; i++){
@@ -181,11 +227,13 @@ void rrt(
         }
 
         std::vector<Node> nodes;
-        nodes.push_back(Node(robots_start, NULL));
+        int node_id = 0;
+        nodes.push_back(Node(robots_start, NULL, node_id++));
+        return_list.push_back(std::tuple<std::vector<std::vector<double>>, int>(robots_start, -1));
 
         // loop with rrt_max_iter
         for(int i = 0; i < rrt_max_iter; i++){
-            std::cout << i << std::endl;
+            //std::cout << i << std::endl;
             
             // get random configuration
             std::vector<std::vector<double>> random_configuration = get_random_configuration(
@@ -207,11 +255,13 @@ void rrt(
             Node* nearest_node = get_nearest_node(random_configuration, nodes);
 
             std::vector<std::vector<double>>* nearest_node_configuration = nearest_node->get_configuration();
+            
             /*
             std::cout << "Nearest node: ";
             for (int i = 0; i < num_robots; i++){
                 std::cout << "(" << (*nearest_node_configuration)[i][0] << ", " << (*nearest_node_configuration)[i][1] << ") ";
             }
+            std::cout << "ID: " << nearest_node->get_id();
             std::cout << std::endl;
             */
 
@@ -226,22 +276,26 @@ void rrt(
             }
             std::cout << std::endl;
             */
-
+            //std::cout << "Checking collision" << std::endl;
             // check if new configuration is valid
-            bool is_valid = check_for_collision(new_configuration, img);
-            if (is_valid){
+            bool is_there_collision = check_for_collision(new_configuration, img);
+            if (!is_there_collision){
                 //std::cout << "Valid configuration" << std::endl;
-                nodes.push_back(Node(new_configuration, nearest_node));
+                nodes.push_back(Node(new_configuration, nearest_node, node_id++));
+                return_list.push_back(std::tuple<std::vector<std::vector<double>>, int>(new_configuration, nearest_node->get_id()));
+                bool is_arrived = check_if_arrived(new_configuration, robots_goal_x, robots_goal_y, rrt_step_size);
+                if (is_arrived){
+                    std::cout << "Arrived in " << i << " steps" << std::endl;
+                    break;
+                }
             }
             else{
                 //std::cout << "Invalid configuration" << std::endl;
             }
 
-
-
         }
         
-        return;
+        return return_list;
     }
 
 PYBIND11_MODULE(rrt_fast, m){
@@ -260,8 +314,8 @@ int main() {
     int env_min_y = -100;
     int env_width = 600;
     int env_height = 600;
-    std::vector<std::vector<std::vector<double>>> obstacles;
     std::vector<std::vector<std::vector<int>>> img;
     rrt(2, robots_start_x, robots_start_y, robots_goal_x, robots_goal_y, rrt_step_size, rrt_rewire_distance, rrt_max_iter, env_min_x, env_min_y, env_width, env_height, img);
     return 0;
 }
+
