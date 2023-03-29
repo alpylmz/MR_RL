@@ -15,6 +15,8 @@ from motion_planner.utils import get_distance
 
 from vision.find_ellips import execute_cell_separation_from_img
 
+import rrt_fast
+
 
 def plot(obstacles, start_points, goal_points, to_be_followed_paths, executed_paths, curr_pose = None):
     import matplotlib.pyplot as plt
@@ -214,14 +216,14 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
 
 def main():
     global OBSTACLES
-    gp_sim = GP.LearningModule()
+    #gp_sim = GP.LearningModule()
 
-    execute_idle_action(gp_sim, noise_var = NOISE)
-    a0_sim = execute_learn_action(gp_sim, noise_var = NOISE, plot = True)
+    #execute_idle_action(gp_sim, noise_var = NOISE)
+    #a0_sim = execute_learn_action(gp_sim, noise_var = NOISE, plot = True)
     ### We learned the noise and a0, so now it is time to create the test environment!
 
     #log.warning("Analyzing the environment using image")
-    #img = cv2.imread("vision/images/clustered_frame_23_jan.png")
+    img = cv2.imread("vision/images/clustered_frame_23_jan.png")
     #all_obstacles = execute_cell_separation_from_img(img)
 
     #print("first obstacle in the all obstacles:", all_obstacles[0])
@@ -229,8 +231,38 @@ def main():
     #OBSTACLES = all_obstacles
     #plot_only_obstacles(all_obstacles)
     #log.warning("Number of obstacles found: " + str(len(all_obstacles)))
-    """
+    
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    height, width = img.shape[:2]
+
+    img_array = np.zeros((height, width, 3), np.uint8)
+
+    for i in range(height):
+        for j in range(width):
+            img_array[i][j][0] = img[i][j][0]
+            img_array[i][j][1] = img[i][j][1]
+            img_array[i][j][2] = img[i][j][2]
+
+    print("img_array:", img_array)
     paths = []
+    rrt_fast.rrt(
+        NUMBER_OF_AGENTS,
+        ROBOTS_START_X,
+        ROBOTS_START_Y,
+        ROBOTS_GOAL_X,
+        ROBOTS_GOAL_Y,
+        RRT_STEP_SIZE,
+        RRT_REWIRE_DISTANCE,
+        RRT_MAX_ITER,
+        ENV_MIN_X,
+        ENV_MIN_Y,
+        ENV_WIDTH,
+        ENV_HEIGHT,
+        list(img_array),
+    )
+
+    """
     for i in range(NUMBER_OF_AGENTS):
         rrt = RRT(
             ROBOTS_START_X[i], 
@@ -247,13 +279,9 @@ def main():
             OBSTACLES,
             img)
     
-        paths.append(rrt.RRTStar(plot = False, rewire = False, repeat = True))
-    # save paths for debugging
-    import pickle
-    with open("paths2.pkl", "wb") as f:
-        pickle.dump(paths, f)
+        paths.append(rrt.RRTStar(plot = True, rewire = False, repeat = True))
     """
-    
+    exit(1)
     #import pickle
     #with open("paths.pkl", "rb") as f:
     #    paths = pickle.load(f)

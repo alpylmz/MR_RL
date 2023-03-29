@@ -170,6 +170,7 @@ class RRT:
         """
         Runs the RRT* algorithm.
         """
+        print("This function does not support multi agent")
         iteration_count = self.max_iter
         for i in tqdm(range(iteration_count)):
             #if (i % 1000) == 0:
@@ -225,12 +226,13 @@ class RRT:
         """
         Plots the environment and the path.
         """
+        print("Plotting")
         fig, ax = plt.subplots()
         ax.set_xlim(self.env_min_x, self.env_min_x + self.env_width)
         ax.set_ylim(self.env_min_y, self.env_min_y + self.env_height)
 
         # plot start and goal
-        ax.scatter(self.start_x, self.start_y, c='g', s=50)
+        ax.scatter(self.start_x, self.start_y, c='b', s=50)
         ax.scatter(self.goal_x, self.goal_y, c='r', s=50)
 
         # print all nodes
@@ -246,12 +248,13 @@ class RRT:
         if path is not None:
             x, y = zip(*path)
             ax.plot(x, y, color="black")
-            ax.scatter(self.start_x, self.start_y, color="green")
-            ax.scatter(self.goal_x, self.goal_y, color="green")
+            #ax.scatter(self.start_x, self.start_y, color="green")
+            #ax.scatter(self.goal_x, self.goal_y, color="green")
             plt.show()
         else:
             #print("No path found")
             plt.show()
+        
 
 def main():
     obstacles = [
