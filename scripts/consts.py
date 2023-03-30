@@ -42,12 +42,20 @@ OBSTACLES = [
     ([1.0, 0.0], [4.0, 0.0], [4.0, -5.0]),
     ([-2.0, 6.0], [-2.0, 2.0], [2.0, 4.0], [4.0, 6.0], [5.0, 7.0])
 ]
+SPEEDS_FOR_FREQ = [
+    [
+        1.8, 0.5
+    ],
+    [
+        1.1, 1.6
+    ]
+]
 
 # RRT consts
-RRT_STEP_SIZE = 3.0
+RRT_STEP_SIZE = 2
 RRT_REWIRE_DISTANCE = RRT_STEP_SIZE
 RRT_MAX_ITER = 50000
 
 LOGGER_LEVEL = logging.WARNING
 
-NUMBER_OF_AGENTS = 2
+NUMBER_OF_AGENTS = 1

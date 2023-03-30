@@ -260,6 +260,7 @@ def main():
         ENV_MIN_Y,
         ENV_WIDTH,
         ENV_HEIGHT,
+        SPEEDS_FOR_FREQ,
         list(img_array),
     )
     print("time taken:", time.time() - start_time)
@@ -286,7 +287,7 @@ def main():
 
     # plot start and goal positions
     for i in range(NUMBER_OF_AGENTS):
-        plt.plot(ROBOTS_START_X[i], ROBOTS_START_Y[i], 'ro')
+        plt.plot(ROBOTS_START_X[i], ROBOTS_START_Y[i], 'bo')
         plt.plot(ROBOTS_GOAL_X[i], ROBOTS_GOAL_Y[i], 'go')
     plt.show()
             
