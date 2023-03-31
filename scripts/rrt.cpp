@@ -69,9 +69,9 @@ Node* get_nearest_node(
             double distance = 0;
             for (int j = 0; j < random_configuration.size(); j++){
                 auto configuration = nodes[i].get_configuration();
-                distance += std::sqrt(
+                distance += 
                     std::pow(random_configuration[j][0] - (*configuration)[j][0], 2) +
-                    std::pow(random_configuration[j][1] - (*configuration)[j][1], 2)); 
+                    std::pow(random_configuration[j][1] - (*configuration)[j][1], 2); 
             }
             if (distance < nearest_node_distance){
                 nearest_node = &nodes[i];
@@ -92,9 +92,9 @@ int get_nearest_node_index(
             double distance = 0;
             for (int j = 0; j < random_configuration.size(); j++){
                 auto configuration = nodes[i].get_configuration();
-                distance += std::sqrt(
+                distance += 
                     std::pow(random_configuration[j][0] - (*configuration)[j][0], 2) +
-                    std::pow(random_configuration[j][1] - (*configuration)[j][1], 2)); 
+                    std::pow(random_configuration[j][1] - (*configuration)[j][1], 2); 
             }
             if (distance < nearest_node_distance){
                 nearest_node_index = i;
@@ -171,13 +171,14 @@ bool check_if_arrived(
     std::vector<double> &robots_goal_y,
     int step_size)
     {
+        double step_size_squared = std::pow(step_size, 2);
         // calculate the distance between the new configuration and the goal for each agent
         for (int i = 0; i < new_configuration.size(); i++){
-            double distance = sqrt(pow(new_configuration[i][0] - robots_goal_x[i], 2) + pow(new_configuration[i][1] - robots_goal_y[i], 2));
+            double distance = pow(new_configuration[i][0] - robots_goal_x[i], 2) + pow(new_configuration[i][1] - robots_goal_y[i], 2);
             if (i == 1){
-                std::cout << "Distance is: " << distance << std::endl;
+                std::cout << "Distance squared is: " << distance << std::endl;
             }
-            if (distance > step_size){
+            if (distance > step_size_squared){
                 return false;
             }
         }
