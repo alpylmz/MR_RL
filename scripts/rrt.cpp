@@ -5,6 +5,7 @@
 #include <random>
 #include <math.h>
 #include <tuple>
+#include <chrono>
 
 namespace py = pybind11;
 
@@ -45,15 +46,18 @@ std::vector<std::vector<double>> get_random_configuration(
     int env_min_x,
     int env_min_y,
     int env_width,
-    int env_height)
+    int env_height,
+    std::uniform_real_distribution<double> &dis_x,
+    std::uniform_real_distribution<double> &dis_y,
+    std::mt19937 &gen)
     {
+        // initialize random_configuration with reserved space num_robots
         std::vector<std::vector<double>> random_configuration;
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dis_x(env_min_x, env_min_x + env_width);
-        std::uniform_real_distribution<> dis_y(env_min_y, env_min_y + env_height);
+        random_configuration.reserve(num_robots);
         for (int i = 0; i < num_robots; i++){
-            random_configuration.push_back(std::vector<double>{dis_x(gen), dis_y(gen)});
+            random_configuration.push_back(std::vector<double>{});
+            random_configuration[i].push_back(dis_x(gen));
+            random_configuration[i].push_back(dis_y(gen));
         }
         return random_configuration;
     }
@@ -201,24 +205,39 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
     std::vector<std::vector<double>> speed_for_freq,
     std::vector<std::vector<std::vector<int>>> &img)
     {
+        // get the start time
+        auto start = std::chrono::high_resolution_clock::now();
+        // random process for optimization
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<> dis_x(env_min_x, env_min_x + env_width);
+        std::uniform_real_distribution<> dis_y(env_min_y, env_min_y + env_height);
 
         //std::cout << "Processing image" << std::endl;
         auto processed_img = process_img(img, rrt_step_size);
         //std::cout << "Image processed" << std::endl;
 
         std::vector<std::tuple<std::vector<std::vector<double>>, int>> return_list;
+        // reserve space for the return list
+        return_list.reserve(num_robots);
         // merge robots start x and y into a vector of tuples
         std::vector<std::vector<double>> robots_start;
+        // reserve the capacity of the vector to num_robots
+        robots_start.reserve(num_robots);
         for (int i = 0; i < num_robots; i++){
             robots_start.push_back(std::vector<double>{robots_start_x[i], robots_start_y[i]});
         }
         // merge robots goal x and y into a vector of tuples
         std::vector<std::vector<double>> robots_goal;
+        // reserve the capacity of the vector to num_robots
+        robots_goal.reserve(num_robots);
         for (int i = 0; i < num_robots; i++){
             robots_goal.push_back(std::vector<double>{robots_goal_x[i], robots_goal_y[i]});
         }
 
         std::vector<Node> nodes;
+        // set the nodes capacity to rrt_max_iter
+        nodes.reserve(rrt_max_iter);
         int node_id = 0;
         nodes.push_back(Node(robots_start, -1, node_id++));
         return_list.push_back(std::make_tuple(robots_start, -1));
@@ -227,7 +246,7 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
         for(int i = 0; i < rrt_max_iter; i++){
             //std::cout << "Iteration: " << i << std::endl;
             // get a random configuration
-            std::vector<std::vector<double>> random_configuration = get_random_configuration(num_robots, env_min_x, env_min_y, env_width, env_height);
+            std::vector<std::vector<double>> random_configuration = get_random_configuration(num_robots, env_min_x, env_min_y, env_width, env_height, dis_x, dis_y ,gen);
             //std::cout << "get random configuration" << std::endl;
 
             // find the nearest node index
@@ -267,18 +286,20 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
                 bool is_arrived = check_if_arrived(new_configuration, robots_goal_x, robots_goal_y, rrt_step_size);
                 //std::cout << "check if arrived" << std::endl;
                 if (is_arrived){
-                    //std::cout << "Arrived in " << i << " steps" << std::endl;
-                    //break;
+                    std::cout << "Arrived in " << i << " steps" << std::endl;
+                    break;
                 }
             }
             else{
                 //std::cout << "Invalid configuration" << std::endl;
             }
 
-    
-
         }
         
+        // end the timer and print the time
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Elapsed time: " << elapsed.count() << " s" << std::endl;
         return return_list;
     }
 
