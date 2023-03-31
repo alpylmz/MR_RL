@@ -246,28 +246,36 @@ def main():
 
     
     import time
-    start_time = time.time()
-    paths = []
-    a = rrt_fast.rrt(
-        NUMBER_OF_AGENTS,
-        ROBOTS_START_X,
-        ROBOTS_START_Y,
-        ROBOTS_GOAL_X,
-        ROBOTS_GOAL_Y,
-        RRT_STEP_SIZE,
-        RRT_REWIRE_DISTANCE,
-        RRT_MAX_ITER,
-        ENV_MIN_X,
-        ENV_MIN_Y,
-        ENV_WIDTH,
-        ENV_HEIGHT,
-        SPEEDS_FOR_FREQ,
-        list(img_array),
-    )
-    print("time taken:", time.time() - start_time)
+    total_time = 0
+    for i in range(20):
+        start_time = time.time()
+        paths = []
+        a = rrt_fast.rrt(
+            NUMBER_OF_AGENTS,
+            ROBOTS_START_X,
+            ROBOTS_START_Y,
+            ROBOTS_GOAL_X,
+            ROBOTS_GOAL_Y,
+            RRT_STEP_SIZE,
+            RRT_REWIRE_DISTANCE,
+            RRT_MAX_ITER,
+            ENV_MIN_X,
+            ENV_MIN_Y,
+            ENV_WIDTH,
+            ENV_HEIGHT,
+            SPEEDS_FOR_FREQ,
+            list(img_array),
+        )
+        print("time taken:", time.time() - start_time)
+        total_time += time.time() - start_time
+    
+    print("average time taken:", total_time/20)
+    exit(1)
     # the list a is elements of the form (configuration, parent id)
     # configuration is a 2*Number_of_agents array
     
+    #print("a:", a)
+
     import matplotlib.pyplot as plt
     import matplotlib
     #print("a:", a)
