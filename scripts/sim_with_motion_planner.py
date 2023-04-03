@@ -303,11 +303,10 @@ def main():
 
     import matplotlib.pyplot as plt
     import matplotlib
-    print("a:", a)
+    #print("a:", a)
 
 
     for element in a:
-        print("element:", element)
         configuration = element[0]
         parent_id = element[1]
         if parent_id == -1:
@@ -324,6 +323,19 @@ def main():
     for i in range(NUMBER_OF_AGENTS):
         plt.plot(ROBOTS_START_X[i], ROBOTS_START_Y[i], 'bo')
         plt.plot(ROBOTS_GOAL_X[i], ROBOTS_GOAL_Y[i], 'go')
+
+    # get ax object
+    ax = plt.gca()
+    # plot obstacles
+    # iterate over image,
+    # if the pixel is not black, make that coordinate gray
+    for i in range(height):
+        for j in range(width):
+            if img[i][j][0] != 0 or img[i][j][1] != 0 or img[i][j][2] != 0:
+                # make the pixel gray
+                #ax.add_patch(matplotlib.patches.Rectangle((i, j), 1, 1, color = 'gray'))
+                pass
+
     plt.show()
             
     """
