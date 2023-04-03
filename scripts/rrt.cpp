@@ -100,6 +100,7 @@ bool check_for_collision(
     std::vector<std::vector<double>> &new_configuration,
     std::vector<std::vector<int>> &img)
     {
+        return false;
         for (int i = 0; i < new_configuration.size(); i++){
             int x = new_configuration[i][0];
             int y = new_configuration[i][1];
@@ -207,6 +208,73 @@ std::vector<std::tuple<double, double>> calculate_speeds(
     return angle_and_time;
 }
 
+void extend_tree(
+    std::vector<std::tuple<std::vector<std::vector<double>>, int>> &tree,
+    std::vector<std::vector<double>> &speed_for_freq,
+    std::vector<std::tuple<double, double>> &angle_and_time,
+    std::vector<std::vector<int>> &img,
+    std::vector<std::vector<double>> &random_configuration,
+    int& node_id,
+    int nearest_node_index,
+    double rrt_step_size,
+    int num_robots){
+        //normalize angle_and_time for all robots
+        // the max value for time should be 1,
+        // angle should not be touched
+        double max_time = 0;
+        for (int i = 0; i < angle_and_time.size(); i++){
+            if (std::get<1>(angle_and_time[i]) > max_time){
+                max_time = std::get<1>(angle_and_time[i]);
+            }
+        }
+        for (int i = 0; i < angle_and_time.size(); i++){
+            std::get<1>(angle_and_time[i]) /= max_time;
+        }
+        // firstly we need to decide for the step distances and angles that we are taking
+        // steps[i][j][k], i is the robot, j is the frequency, k is 0 or 1, x or y
+        std::vector<std::vector<std::tuple<double, double>>> steps;
+        for (int j = 0; j < num_robots; j++){
+            steps.push_back(std::vector<std::tuple<double, double>>{});
+            for (int k = 0; k < num_robots; k++){
+                // use the transpose of speed_for_freq
+                double add_x = -1 * speed_for_freq[k][j] * cos(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
+                double add_y = -1 * speed_for_freq[k][j] * sin(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
+                steps[j].push_back(std::make_tuple(add_x, add_y));
+            }
+        }
+        bool is_there_collision = false;
+        for (int qq = 0; qq < 1000; qq++){
+            for(int j = 0; j < num_robots; j++){
+                std::vector<std::vector<double>> intermediate_configuration;
+                for(int k = 0; k < num_robots; k++){
+                    double new_x = std::get<0>(tree[nearest_node_index])[k][0] + std::get<0>(steps[j][k]);
+                    double new_y = std::get<0>(tree[nearest_node_index])[k][1] + std::get<1>(steps[j][k]);
+
+                    intermediate_configuration.push_back(std::vector<double>{new_x, new_y});
+                }
+                is_there_collision = check_for_collision(intermediate_configuration, img);
+                if (is_there_collision){
+                    break;
+                }
+
+                tree.push_back(std::make_tuple(intermediate_configuration, nearest_node_index));
+                nearest_node_index = node_id;
+                node_id++;
+            }
+            if (is_there_collision){
+                break;
+            }
+
+            // are we close enough to the random configuration?
+            double distance = 0;
+            for (int j = 0; j < num_robots; j++){
+                distance += sqrt(pow(std::get<0>(tree[nearest_node_index])[j][0] - random_configuration[j][0], 2) + pow(std::get<0>(tree[nearest_node_index])[j][1] - random_configuration[j][1], 2));
+            }
+            if (distance < rrt_step_size){
+                break;
+            }
+        }
+    }
 
 std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
     int num_robots,
@@ -266,9 +334,18 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
 
         int node_id = 1;
         return_list.push_back(std::make_tuple(robots_start, -1));
+
+        // create the variables for the second tree
+        std::vector<std::tuple<std::vector<std::vector<double>>, int>> goal_return_list;
+        // reserve space for the return list
+        goal_return_list.reserve(num_robots);
+
+        int goal_node_id = 1;
+        goal_return_list.push_back(std::make_tuple(robots_goal, -1));
         
         // loop with rrt_max_iter
         for(int i = 0; i < rrt_max_iter; i++){
+            
             std::vector<std::vector<double>> random_configuration = 
                 get_random_configuration(
                     num_robots, 
@@ -280,110 +357,70 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
                     dis_y,
                     gen
                 );
+            
+            //std::vector<std::vector<double>> random_configuration;
+            //random_configuration.push_back(std::vector<double>{23.9023, 11.229});
+            //random_configuration.push_back(std::vector<double>{135.879, 155.722});
+            //random_configuration.push_back(std::vector<double>{22, 112});
+            //random_configuration.push_back(std::vector<double>{45, -85});
 
             int nearest_node_index = get_nearest_node_index(random_configuration, return_list);
-            
-            // get a random angle, because there is no specific angle that we can use in the multi-agent case
-            double angle = dis_angle(gen);
+            int goal_nearest_node_index = get_nearest_node_index(random_configuration, goal_return_list);
 
-            /*
-            std::vector<std::vector<double>> inversed_frequencies;
-            // initialize the inversed_frequencies matrix with ((2,1), (4,3))
-            inversed_frequencies.push_back(std::vector<double>{1.5, -2});
-            inversed_frequencies.push_back(std::vector<double>{-0.5, 1});
-            */
             std::vector<std::vector<double>> current_configuration;
             for (int j = 0; j < num_robots; j++){
-                current_configuration.push_back(std::vector<double>{std::get<0>(return_list[nearest_node_index])[j][0], std::get<0>(return_list[nearest_node_index])[j][1]});
+                current_configuration.push_back(
+                    std::vector<double>{
+                        std::get<0>(return_list[nearest_node_index])[j][0], 
+                        std::get<0>(return_list[nearest_node_index])[j][1]
+                    }
+                );
+            }
+            std::vector<std::vector<double>> goal_current_configuration;
+            for (int j = 0; j < num_robots; j++){
+                goal_current_configuration.push_back(
+                    std::vector<double>{
+                        std::get<0>(goal_return_list[goal_nearest_node_index])[j][0], 
+                        std::get<0>(goal_return_list[goal_nearest_node_index])[j][1]
+                    }
+                );
             }
 
-            auto angle_and_time = calculate_speeds(inversed_frequencies, current_configuration, random_configuration, num_robots);
+            auto angle_and_time = calculate_speeds(
+                inversed_frequencies, 
+                current_configuration, 
+                random_configuration, 
+                num_robots
+            );
+            /*
+            auto goal_angle_and_time = calculate_speeds(
+                inversed_frequencies, 
+                goal_current_configuration, 
+                random_configuration, 
+                num_robots
+            );
+            */
 
             std::cout << "current_configuration: " << current_configuration[0][0] << ", " << current_configuration[0][1] << std::endl;
+            std::cout << "current_configuration: " << current_configuration[1][0] << ", " << current_configuration[1][1] << std::endl;
             std::cout << "random_configuration: " << random_configuration[0][0] << ", " << random_configuration[0][1] << std::endl;
+            std::cout << "random_configuration: " << random_configuration[1][0] << ", " << random_configuration[1][1] << std::endl;
 
-            while(true){
-                bool is_there_collision = false;
-                // apply the angle and time to the robots
-                for (int j = 0; j < num_robots; j++){
-                    //std::cout << "Apply angle: " << std::get<0>(angle_and_time[j]) << " for time: " << std::get<1>(angle_and_time[j]) << "for frequency: " << j << std::endl;
-                
-                    std::vector<std::vector<double>> intermediate_configuration;
-                    for (int k = 0; k < num_robots; k++){
-                        // use the transpose of speed_for_freq
-                        //std::cout << "speed_for_freq[" << k << "][" << j << "]: " << speed_for_freq[k][j] << std::endl;
-                        double add_x = speed_for_freq[k][j] * cos(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
-                        double add_y = speed_for_freq[k][j] * sin(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
-                        // constraint the movement by the rrt_step_size
-                        // also consider having the same angle
-                        double step_size = std::sqrt(std::pow(add_x, 2) + std::pow(add_y, 2));
-                        if (step_size > rrt_step_size){
-                            add_x = add_x * rrt_step_size / step_size;
-                            add_y = add_y * rrt_step_size / step_size;
-                        }
-                        //std::cout << "add_x: " << add_x << " add_y: " << add_y << std::endl;
-                        double new_x = std::get<0>(return_list[nearest_node_index])[k][0] + add_x;
-                        double new_y = std::get<0>(return_list[nearest_node_index])[k][1] + add_y;
-                        intermediate_configuration.push_back(std::vector<double>{new_x, new_y});
-                    }
+            extend_tree(
+                return_list,
+                speed_for_freq,
+                angle_and_time,
+                processed_img,
+                random_configuration,
+                node_id,
+                nearest_node_index,
+                rrt_step_size,
+                num_robots
+            );
 
-                    // check if the intermediate configuration is valid
-                    is_there_collision = check_for_collision(intermediate_configuration, processed_img);
-                    if (is_there_collision){
-                        break;
-                    }
-
-                    // push
-                    return_list.push_back(std::make_tuple(intermediate_configuration, nearest_node_index));
-                    nearest_node_index = node_id;
-                    node_id++;
-                
-                }
-                if (is_there_collision){
-                    break;
-                }
-
-                // are we close enough to the random configuration?
-                bool is_close_enough = true;
-                for (int j = 0; j < num_robots; j++){
-                    double distance = std::sqrt(std::pow(std::get<0>(return_list[nearest_node_index])[j][0] - random_configuration[j][0], 2) + std::pow(std::get<0>(return_list[nearest_node_index])[j][1] - random_configuration[j][1], 2));
-                    if (distance > rrt_step_size){
-                        is_close_enough = false;
-                        break;
-                    }
-                }
-                if (is_close_enough){
-                    break;
-                }
-            }
-
-            /*
-            // calculate the new configuration by using speed for freq and random angle
-            //std::vector<std::vector<double>> new_configuration;
-            auto freq_index = rand() % num_robots;
-            for (int j = 0; j < num_robots; j++){
-                double add_x = speed_for_freq[freq_index][j] * cos(angle);
-                double add_y = speed_for_freq[freq_index][j] * sin(angle);
-                double new_x = std::get<0>(return_list[nearest_node_index])[j][0] + add_x;
-                double new_y = std::get<0>(return_list[nearest_node_index])[j][1] + add_y;
-                new_configuration.push_back(std::vector<double>{new_x, new_y});
-            }
-
-            // check if new configuration is valid
-            bool is_there_collision = check_for_collision(new_configuration, processed_img);
-
-            if (!is_there_collision){
-                return_list.push_back(std::make_tuple(new_configuration, nearest_node_index));
-                bool is_arrived = check_if_arrived(new_configuration, robots_goal_x, robots_goal_y, rrt_step_size);
-                if (is_arrived){
-                    std::cout << "Arrived in " << i << " steps" << std::endl;
-                    break;
-                }
-            }
-            else{
-                //std::cout << "Invalid configuration" << std::endl;
-            }
-            */
+            std::cout << "returned" << std::endl;
+            return return_list;
+           
 
         }
         
