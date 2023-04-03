@@ -138,16 +138,7 @@ std::vector<std::tuple<double, double>> calculate_speeds(
     std::vector<std::vector<double>> &inversed_frequencies,
     std::vector<std::vector<double>> &current_configuration,
     std::vector<std::vector<double>> &goal_configuration,
-    int num_robots
-){
-
-    std::cout << "inversed_frequencies is: " << std::endl;
-    for (int i = 0; i < inversed_frequencies.size(); i++){
-        for (int j = 0; j < inversed_frequencies[0].size(); j++){
-            std::cout << inversed_frequencies[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
+    int num_robots){
 
     // create a matrix of size (num_robots, 2) by current_configuration - goal_configuration
     std::vector<std::vector<double>> displacements;
@@ -156,15 +147,6 @@ std::vector<std::tuple<double, double>> calculate_speeds(
         for (int j = 0; j < 2; j++){
             displacements[i].push_back(current_configuration[i][j] - goal_configuration[i][j]);
         }
-    }
-
-    // print this matrix
-    std::cout << "Displacements matrix is: " << std::endl;
-    for (int i = 0; i < num_robots; i++){
-        for (int j = 0; j < 2; j++){
-            std::cout << displacements[i][j] << " ";
-        }
-        std::cout << std::endl;
     }
 
     // multiply the matrix 
@@ -182,15 +164,6 @@ std::vector<std::tuple<double, double>> calculate_speeds(
         }
     }
 
-    // print the time_for_each_freq matrix
-    std::cout << "Time for each freq matrix is: " << std::endl;
-    for (int i = 0; i < time_for_each_freq.size(); i++){
-        for (int j = 0; j < time_for_each_freq[0].size(); j++){
-            std::cout << time_for_each_freq[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-
     std::vector<std::tuple<double, double>> angle_and_time;
     // angle is found by atan2(y, x) in each vector
     // time is found by sqrt(x^2 + y^2) in each vector
@@ -200,15 +173,10 @@ std::vector<std::tuple<double, double>> calculate_speeds(
         angle_and_time.push_back(std::make_tuple(angle, time));
     }
 
-    // print the angle_and_time matrix
-    std::cout << "Angle and time matrix is: " << std::endl;
-    for (int i = 0; i < angle_and_time.size(); i++){
-        std::cout << "Apply angle: " << std::get<0>(angle_and_time[i]) << " for time: " << std::get<1>(angle_and_time[i]) << "for frequency: " << i << std::endl;
-    }
     return angle_and_time;
 }
 
-void extend_tree(
+bool extend_tree(
     std::vector<std::tuple<std::vector<std::vector<double>>, int>> &tree,
     std::vector<std::vector<double>> &speed_for_freq,
     std::vector<std::tuple<double, double>> &angle_and_time,
@@ -243,7 +211,7 @@ void extend_tree(
             }
         }
         bool is_there_collision = false;
-        for (int qq = 0; qq < 1000; qq++){
+        while(true){
             for(int j = 0; j < num_robots; j++){
                 std::vector<std::vector<double>> intermediate_configuration;
                 for(int k = 0; k < num_robots; k++){
@@ -271,9 +239,10 @@ void extend_tree(
                 distance += sqrt(pow(std::get<0>(tree[nearest_node_index])[j][0] - random_configuration[j][0], 2) + pow(std::get<0>(tree[nearest_node_index])[j][1] - random_configuration[j][1], 2));
             }
             if (distance < rrt_step_size){
-                break;
+                return true;
             }
         }
+        return false;
     }
 
 std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
@@ -357,12 +326,6 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
                     dis_y,
                     gen
                 );
-            
-            //std::vector<std::vector<double>> random_configuration;
-            //random_configuration.push_back(std::vector<double>{23.9023, 11.229});
-            //random_configuration.push_back(std::vector<double>{135.879, 155.722});
-            //random_configuration.push_back(std::vector<double>{22, 112});
-            //random_configuration.push_back(std::vector<double>{45, -85});
 
             int nearest_node_index = get_nearest_node_index(random_configuration, return_list);
             int goal_nearest_node_index = get_nearest_node_index(random_configuration, goal_return_list);
@@ -392,21 +355,21 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
                 random_configuration, 
                 num_robots
             );
-            /*
+            
             auto goal_angle_and_time = calculate_speeds(
                 inversed_frequencies, 
                 goal_current_configuration, 
                 random_configuration, 
                 num_robots
             );
-            */
+            
 
-            std::cout << "current_configuration: " << current_configuration[0][0] << ", " << current_configuration[0][1] << std::endl;
-            std::cout << "current_configuration: " << current_configuration[1][0] << ", " << current_configuration[1][1] << std::endl;
-            std::cout << "random_configuration: " << random_configuration[0][0] << ", " << random_configuration[0][1] << std::endl;
-            std::cout << "random_configuration: " << random_configuration[1][0] << ", " << random_configuration[1][1] << std::endl;
+            //std::cout << "current_configuration: " << current_configuration[0][0] << ", " << current_configuration[0][1] << std::endl;
+            //std::cout << "current_configuration: " << current_configuration[1][0] << ", " << current_configuration[1][1] << std::endl;
+            //std::cout << "random_configuration: " << random_configuration[0][0] << ", " << random_configuration[0][1] << std::endl;
+            //std::cout << "random_configuration: " << random_configuration[1][0] << ", " << random_configuration[1][1] << std::endl;
 
-            extend_tree(
+            bool found_way_1 = extend_tree(
                 return_list,
                 speed_for_freq,
                 angle_and_time,
@@ -418,8 +381,22 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
                 num_robots
             );
 
-            std::cout << "returned" << std::endl;
-            return return_list;
+            bool found_way_2 = extend_tree(
+                goal_return_list,
+                speed_for_freq,
+                goal_angle_and_time,
+                processed_img,
+                random_configuration,
+                goal_node_id,
+                goal_nearest_node_index,
+                rrt_step_size,
+                num_robots
+            );
+
+            if (found_way_1 && found_way_2){
+                std::cout << "Found a way" << std::endl;
+                break;
+            }
            
 
         }
