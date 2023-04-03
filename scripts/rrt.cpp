@@ -133,6 +133,80 @@ bool check_if_arrived(
         return true;
 }
 
+std::vector<std::tuple<double, double>> calculate_speeds(
+    std::vector<std::vector<double>> &inversed_frequencies,
+    std::vector<std::vector<double>> &current_configuration,
+    std::vector<std::vector<double>> &goal_configuration,
+    int num_robots
+){
+
+    std::cout << "inversed_frequencies is: " << std::endl;
+    for (int i = 0; i < inversed_frequencies.size(); i++){
+        for (int j = 0; j < inversed_frequencies[0].size(); j++){
+            std::cout << inversed_frequencies[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    // create a matrix of size (num_robots, 2) by current_configuration - goal_configuration
+    std::vector<std::vector<double>> displacements;
+    for (int i = 0; i < num_robots; i++){
+        displacements.push_back(std::vector<double>{});
+        for (int j = 0; j < 2; j++){
+            displacements[i].push_back(current_configuration[i][j] - goal_configuration[i][j]);
+        }
+    }
+
+    // print this matrix
+    std::cout << "Displacements matrix is: " << std::endl;
+    for (int i = 0; i < num_robots; i++){
+        for (int j = 0; j < 2; j++){
+            std::cout << displacements[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    // multiply the matrix 
+    // inversed_frequencies * displacements
+    // and store the result in time_for_each_freq matrix
+    std::vector<std::vector<double>> time_for_each_freq;
+    for (int i = 0; i < num_robots; i++){
+        time_for_each_freq.push_back(std::vector<double>{});
+        for (int j = 0; j < num_robots; j++){
+            double sum = 0;
+            for (int k = 0; k < num_robots; k++){
+                sum += inversed_frequencies[i][k] * displacements[k][j];
+            }
+            time_for_each_freq[i].push_back(sum);
+        }
+    }
+
+    // print the time_for_each_freq matrix
+    std::cout << "Time for each freq matrix is: " << std::endl;
+    for (int i = 0; i < time_for_each_freq.size(); i++){
+        for (int j = 0; j < time_for_each_freq[0].size(); j++){
+            std::cout << time_for_each_freq[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    std::vector<std::tuple<double, double>> angle_and_time;
+    // angle is found by atan2(y, x) in each vector
+    // time is found by sqrt(x^2 + y^2) in each vector
+    for (int i = 0; i < time_for_each_freq.size(); i++){
+        double angle = atan2(time_for_each_freq[i][1], time_for_each_freq[i][0]);
+        double time = sqrt(pow(time_for_each_freq[i][0], 2) + pow(time_for_each_freq[i][1], 2));
+        angle_and_time.push_back(std::make_tuple(angle, time));
+    }
+
+    // print the angle_and_time matrix
+    std::cout << "Angle and time matrix is: " << std::endl;
+    for (int i = 0; i < angle_and_time.size(); i++){
+        std::cout << "Apply angle: " << std::get<0>(angle_and_time[i]) << " for time: " << std::get<1>(angle_and_time[i]) << "for frequency: " << i << std::endl;
+    }
+    return angle_and_time;
+}
+
 
 std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
     int num_robots,
@@ -148,7 +222,8 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
     int env_width,
     int env_height,
     std::vector<std::vector<double>> speed_for_freq,
-    std::vector<std::vector<std::vector<int>>> &img)
+    std::vector<std::vector<std::vector<int>>> &img,
+    std::vector<std::vector<double>> &inversed_frequencies)
     {
         // get the start time
         auto start = std::chrono::high_resolution_clock::now();
@@ -211,8 +286,50 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
             // get a random angle, because there is no specific angle that we can use in the multi-agent case
             double angle = dis_angle(gen);
 
+            /*
+            std::vector<std::vector<double>> inversed_frequencies;
+            // initialize the inversed_frequencies matrix with ((2,1), (4,3))
+            inversed_frequencies.push_back(std::vector<double>{1.5, -2});
+            inversed_frequencies.push_back(std::vector<double>{-0.5, 1});
+            */
+            std::vector<std::vector<double>> current_configuration;
+            for (int j = 0; j < num_robots; j++){
+                current_configuration.push_back(std::vector<double>{std::get<0>(return_list[nearest_node_index])[j][0], std::get<0>(return_list[nearest_node_index])[j][1]});
+            }
+
+            auto angle_and_time = calculate_speeds(inversed_frequencies, current_configuration, random_configuration, num_robots);
+
+            std::cout << "current_configuration: " << current_configuration[0][0] << ", " << current_configuration[0][1] << std::endl;
+            std::cout << "random_configuration: " << random_configuration[0][0] << ", " << random_configuration[0][1] << std::endl;
+
+            // apply the angle and time to the robots
+            for (int j = 0; j < num_robots; j++){
+                std::cout << "Apply angle: " << std::get<0>(angle_and_time[j]) << " for time: " << std::get<1>(angle_and_time[j]) << "for frequency: " << j << std::endl;
+            
+                std::vector<std::vector<double>> intermediate_configuration;
+                for (int k = 0; k < num_robots; k++){
+                    // use the transpose of speed_for_freq
+                    std::cout << "speed_for_freq[" << k << "][" << j << "]: " << speed_for_freq[k][j] << std::endl;
+                    double add_x = speed_for_freq[k][j] * cos(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
+                    double add_y = speed_for_freq[k][j] * sin(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
+                    std::cout << "add_x: " << add_x << " add_y: " << add_y << std::endl;
+                    double new_x = std::get<0>(return_list[nearest_node_index])[k][0] + add_x;
+                    double new_y = std::get<0>(return_list[nearest_node_index])[k][1] + add_y;
+                    intermediate_configuration.push_back(std::vector<double>{new_x, new_y});
+                }
+
+                // push
+                return_list.push_back(std::make_tuple(intermediate_configuration, nearest_node_index));
+                nearest_node_index = node_id;
+                node_id++;
+            
+            }
+
+            return return_list;
+
+            /*
             // calculate the new configuration by using speed for freq and random angle
-            std::vector<std::vector<double>> new_configuration;
+            //std::vector<std::vector<double>> new_configuration;
             auto freq_index = rand() % num_robots;
             for (int j = 0; j < num_robots; j++){
                 double add_x = speed_for_freq[freq_index][j] * cos(angle);
@@ -236,6 +353,7 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
             else{
                 //std::cout << "Invalid configuration" << std::endl;
             }
+            */
 
         }
         
@@ -264,6 +382,7 @@ int main() {
     int env_height = 600;
     std::vector<std::vector<std::vector<int>>> img;
     std::vector<std::vector<double>> speed_for_freq = {{1, 1}, {1, 1}};
+    /*
     rrt(
         2, 
         robots_start_x, 
@@ -280,6 +399,7 @@ int main() {
         speed_for_freq, 
         img
     );
+    */
     return 0;
 }
 

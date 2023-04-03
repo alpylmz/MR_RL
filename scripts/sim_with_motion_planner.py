@@ -244,7 +244,7 @@ def main():
             img_array[i][j][1] = img[i][j][1]
             img_array[i][j][2] = img[i][j][2]
 
-    
+    """
     import time
     total_time = 0
     for i in range(20):
@@ -271,6 +271,31 @@ def main():
     
     print("average time taken:", total_time/20)
     exit(1)
+    """
+    # take the matrix inverse of speed_for_freq
+    inversed_frequencies = np.array(SPEEDS_FOR_FREQ)
+    # decrease the array into a num_agents * num_agents matrix
+    inversed_frequencies = inversed_frequencies[:NUMBER_OF_AGENTS, :NUMBER_OF_AGENTS]
+    inversed_frequencies = np.linalg.inv(inversed_frequencies)
+
+    a = rrt_fast.rrt(
+            NUMBER_OF_AGENTS,
+            ROBOTS_START_X,
+            ROBOTS_START_Y,
+            ROBOTS_GOAL_X,
+            ROBOTS_GOAL_Y,
+            RRT_STEP_SIZE,
+            RRT_REWIRE_DISTANCE,
+            RRT_MAX_ITER,
+            ENV_MIN_X,
+            ENV_MIN_Y,
+            ENV_WIDTH,
+            ENV_HEIGHT,
+            SPEEDS_FOR_FREQ,
+            list(img_array),
+            inversed_frequencies
+        )
+    
     # the list a is elements of the form (configuration, parent id)
     # configuration is a 2*Number_of_agents array
     
@@ -278,10 +303,11 @@ def main():
 
     import matplotlib.pyplot as plt
     import matplotlib
-    #print("a:", a)
+    print("a:", a)
 
 
     for element in a:
+        print("element:", element)
         configuration = element[0]
         parent_id = element[1]
         if parent_id == -1:
