@@ -100,7 +100,6 @@ bool check_for_collision(
     std::vector<std::vector<double>> &new_configuration,
     std::vector<std::vector<int>> &img)
     {
-        return false;
         for (int i = 0; i < new_configuration.size(); i++){
             int x = new_configuration[i][0];
             int y = new_configuration[i][1];
@@ -228,24 +227,38 @@ bool extend_tree(
                 tree.push_back(std::make_tuple(intermediate_configuration, nearest_node_index));
                 nearest_node_index = node_id;
                 node_id++;
+            
+                // are we close enough to the random configuration?
+                double distance = 0;
+                for (int j = 0; j < num_robots; j++){
+                    distance += sqrt(
+                        pow(
+                            std::get<0>(tree[nearest_node_index])[j][0] 
+                            - 
+                            random_configuration[j][0], 2
+                        ) 
+                        + 
+                        pow(
+                            std::get<0>(tree[nearest_node_index])[j][1]
+                            -
+                            random_configuration[j][1], 2
+                        )
+                    );
+                }
+                if (distance < rrt_step_size){
+                    return true;
+                }
+            
             }
             if (is_there_collision){
                 break;
             }
 
-            // are we close enough to the random configuration?
-            double distance = 0;
-            for (int j = 0; j < num_robots; j++){
-                distance += sqrt(pow(std::get<0>(tree[nearest_node_index])[j][0] - random_configuration[j][0], 2) + pow(std::get<0>(tree[nearest_node_index])[j][1] - random_configuration[j][1], 2));
-            }
-            if (distance < rrt_step_size){
-                return true;
-            }
         }
         return false;
     }
 
-std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
+std::tuple<std::vector<std::tuple<std::vector<std::vector<double>>, int>>, std::vector<std::tuple<std::vector<std::vector<double>>, int>>> rrt(
     int num_robots,
     std::vector<double> robots_start_x,
     std::vector<double> robots_start_y,
@@ -405,7 +418,7 @@ std::vector<std::tuple<std::vector<std::vector<double>>, int>> rrt(
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end - start;
         std::cout << "Elapsed time: " << elapsed.count() << " s" << std::endl;
-        return return_list;
+        return std::make_tuple(return_list, goal_return_list);
     }
 
 PYBIND11_MODULE(rrt_fast, m){

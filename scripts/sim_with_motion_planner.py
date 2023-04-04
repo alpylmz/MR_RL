@@ -17,6 +17,9 @@ from vision.find_ellips import execute_cell_separation_from_img
 
 import rrt_fast
 
+import matplotlib.pyplot as plt
+import matplotlib
+
 
 def plot(obstacles, start_points, goal_points, to_be_followed_paths, executed_paths, curr_pose = None):
     import matplotlib.pyplot as plt
@@ -212,7 +215,43 @@ def controller(init_states, paths, gp_sim, env, obstacles, verbose=False, contro
             log.debug("-----------------------------")
 
     # NEED TO UPDATE THIS !!!! TODO
-    plot(obstacles, paths[0], paths[-1], paths, executed_paths)
+    plot(obstacles, paths[0], paths[-1], paths, executed_paths)  
+
+def traverse_and_plot_path(
+    plt,
+    paths,
+):
+    curr_index = -1
+    while True:
+        curr_configurations = paths[curr_index][0]
+        curr_parent_id = paths[curr_index][1]
+
+        if curr_parent_id == -1:
+            break
+        
+        next_configurations = paths[curr_parent_id][0]
+        curr_index = curr_parent_id
+
+        # draw a line between the two points
+        for i in range(NUMBER_OF_AGENTS):
+            plt.plot(
+                [
+                    curr_configurations[i][0], 
+                    next_configurations[i][0]
+                ], 
+                [
+                    curr_configurations[i][1], 
+                    next_configurations[i][1]
+                ], 
+                color = matplotlib.colors.hsv_to_rgb(
+                    [
+                        i/NUMBER_OF_AGENTS, 
+                        1, 
+                        1
+                    ]
+                )
+            )
+        
 
 def main():
     global OBSTACLES
@@ -301,12 +340,15 @@ def main():
     
     #print("a:", a)
 
-    import matplotlib.pyplot as plt
-    import matplotlib
     #print("a:", a)
+    paths1 = a[0]
+    paths2 = a[1]
+        
+    traverse_and_plot_path(plt, paths1)
+    traverse_and_plot_path(plt, paths2)
 
-
-    for element in a:
+    """
+    for element in paths1:
         configuration = element[0]
         parent_id = element[1]
         if parent_id == -1:
@@ -314,11 +356,19 @@ def main():
         for i in range(NUMBER_OF_AGENTS):
             #print("printing line")
             #print("point 1:", configuration[i])
-            #print("point 2:", a[parent_id][0][i])
+            #print("point 2:", paths1[parent_id][0][i])
             # draw a line between the two points
             # pick color from rainbow
-            plt.plot([configuration[i][0], a[parent_id][0][i][0]], [configuration[i][1], a[parent_id][0][i][1]], color = matplotlib.colors.hsv_to_rgb([i/NUMBER_OF_AGENTS, 1, 1]))
+            plt.plot([configuration[i][0], paths1[parent_id][0][i][0]], [configuration[i][1], paths1[parent_id][0][i][1]], color = matplotlib.colors.hsv_to_rgb([i/NUMBER_OF_AGENTS, 1, 1]))
 
+    for element in paths2:
+        configuration = element[0]
+        parent_id = element[1]
+        if parent_id == -1:
+            continue
+        for i in range(NUMBER_OF_AGENTS):
+            plt.plot([configuration[i][0], paths2[parent_id][0][i][0]], [configuration[i][1], paths2[parent_id][0][i][1]], color = matplotlib.colors.hsv_to_rgb([i/NUMBER_OF_AGENTS, 1, 1]))
+    """
     # plot start and goal positions
     for i in range(NUMBER_OF_AGENTS):
         plt.plot(ROBOTS_START_X[i], ROBOTS_START_Y[i], 'bo')
@@ -333,8 +383,8 @@ def main():
         for j in range(width):
             if img[i][j][0] != 0 or img[i][j][1] != 0 or img[i][j][2] != 0:
                 # make the pixel gray
-                #ax.add_patch(matplotlib.patches.Rectangle((i, j), 1, 1, color = 'gray'))
-                pass
+                ax.add_patch(matplotlib.patches.Rectangle((i, j), 1, 1, color = 'gray'))
+                #pass
 
     plt.show()
             
