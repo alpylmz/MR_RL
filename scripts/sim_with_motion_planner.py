@@ -283,6 +283,11 @@ def main():
             img_array[i][j][1] = img[i][j][1]
             img_array[i][j][2] = img[i][j][2]
 
+    # take the matrix inverse of speed_for_freq
+    inversed_frequencies = np.array(SPEEDS_FOR_FREQ)
+    # decrease the array into a num_agents * num_agents matrix
+    inversed_frequencies = inversed_frequencies[:NUMBER_OF_AGENTS, :NUMBER_OF_AGENTS]
+    inversed_frequencies = np.linalg.inv(inversed_frequencies)
     """
     import time
     total_time = 0
@@ -304,6 +309,7 @@ def main():
             ENV_HEIGHT,
             SPEEDS_FOR_FREQ,
             list(img_array),
+            inversed_frequencies
         )
         print("time taken:", time.time() - start_time)
         total_time += time.time() - start_time
@@ -311,11 +317,6 @@ def main():
     print("average time taken:", total_time/20)
     exit(1)
     """
-    # take the matrix inverse of speed_for_freq
-    inversed_frequencies = np.array(SPEEDS_FOR_FREQ)
-    # decrease the array into a num_agents * num_agents matrix
-    inversed_frequencies = inversed_frequencies[:NUMBER_OF_AGENTS, :NUMBER_OF_AGENTS]
-    inversed_frequencies = np.linalg.inv(inversed_frequencies)
 
     a = rrt_fast.rrt(
             NUMBER_OF_AGENTS,
@@ -379,8 +380,8 @@ def main():
     # plot obstacles
     # iterate over image,
     # if the pixel is not black, make that coordinate gray
-    for i in range(height):
-        for j in range(width):
+    for i in range(200):
+        for j in range(200):
             if img[i][j][0] != 0 or img[i][j][1] != 0 or img[i][j][2] != 0:
                 # make the pixel gray
                 ax.add_patch(matplotlib.patches.Rectangle((i, j), 1, 1, color = 'gray'))

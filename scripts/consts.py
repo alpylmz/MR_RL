@@ -30,9 +30,9 @@ STEP_SIZE = 0.1
 
 # Environment variables
 ROBOTS_START_X = [2, 50, 58, 15, 25, 35, 45, 55, 65, 75]
-ROBOTS_START_Y = [2, 50, 20, 15, 25, 35, 45, 55, 65, 75]
+ROBOTS_START_Y = [2, 50, 20, 100, 75, 35, 45, 55, 65, 75]
 ROBOTS_GOAL_X = [150, 98, 160, 20, 50, 10, 40, 30, 60, 100]
-ROBOTS_GOAL_Y = [100, 102, 35, 30, 5, 50, 30, 20, 10, 60]
+ROBOTS_GOAL_Y = [100, 102, 35, 70, 5, 50, 30, 20, 10, 60]
 ENV_MIN_X = 0
 ENV_MIN_Y = 0
 ENV_WIDTH = 200
@@ -44,21 +44,24 @@ OBSTACLES = [
 ]
 SPEEDS_FOR_FREQ = [
     [
-        4, 2, 4
+        1, 2, 1, 1
     ],
     [
-        2, 4, 1
+        0.5, 1.5, 2, 1
     ],
     [
-        1, 2, 3
+        2, 0.4, 0.2, 1
+    ],
+    [
+        0.7, 1, 2, 1.5
     ]
 ]
 
 # RRT consts
 RRT_STEP_SIZE = 4
 RRT_REWIRE_DISTANCE = RRT_STEP_SIZE
-RRT_MAX_ITER = 1000000
+RRT_MAX_ITER = 10000
 
 LOGGER_LEVEL = logging.WARNING
 
-NUMBER_OF_AGENTS = 2
+NUMBER_OF_AGENTS = 4

@@ -187,7 +187,7 @@ bool extend_tree(
     int num_robots){
         //normalize angle_and_time for all robots
         // the max value for time should be 1,
-        // angle should not be touched
+        // angle should not be changed
         double max_time = 0;
         for (int i = 0; i < angle_and_time.size(); i++){
             if (std::get<1>(angle_and_time[i]) > max_time){
@@ -200,13 +200,13 @@ bool extend_tree(
         // firstly we need to decide for the step distances and angles that we are taking
         // steps[i][j][k], i is the robot, j is the frequency, k is 0 or 1, x or y
         std::vector<std::vector<std::tuple<double, double>>> steps;
-        for (int j = 0; j < num_robots; j++){
+        for (int i = 0; i < num_robots; i++){
             steps.push_back(std::vector<std::tuple<double, double>>{});
-            for (int k = 0; k < num_robots; k++){
+            for (int j = 0; j < num_robots; j++){
                 // use the transpose of speed_for_freq
-                double add_x = -1 * speed_for_freq[k][j] * cos(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
-                double add_y = -1 * speed_for_freq[k][j] * sin(std::get<0>(angle_and_time[j])) * std::get<1>(angle_and_time[j]);
-                steps[j].push_back(std::make_tuple(add_x, add_y));
+                double add_x = -1 * speed_for_freq[j][i] * cos(std::get<0>(angle_and_time[i])) * std::get<1>(angle_and_time[i]);
+                double add_y = -1 * speed_for_freq[j][i] * sin(std::get<0>(angle_and_time[i])) * std::get<1>(angle_and_time[i]);
+                steps[i].push_back(std::make_tuple(add_x, add_y));
             }
         }
         bool is_there_collision = false;
@@ -255,6 +255,161 @@ bool extend_tree(
             }
 
         }
+        return false;
+    }
+
+bool extend_tree_second_v(
+    std::vector<std::tuple<std::vector<std::vector<double>>, int>> &tree,
+    std::vector<std::vector<double>> &speed_for_freq,
+    std::vector<std::tuple<double, double>> &angle_and_time,
+    std::vector<std::vector<int>> &img,
+    std::vector<std::vector<double>> &random_configuration,
+    int& node_id,
+    int nearest_node_index,
+    double rrt_step_size,
+    int num_robots){
+        // speed for freq print
+        /*
+        std::cout << "speed for freq" << std::endl;
+        for (int i = 0; i < speed_for_freq.size(); i++){
+            for (int j = 0; j < speed_for_freq[i].size(); j++){
+                std::cout << speed_for_freq[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        */
+        // firstly we need to decide for the step distances and angles that we are taking
+        // steps[i][j][k], i is the robot, j is the frequency, k is 0 or 1, x or y
+        std::vector<std::vector<std::tuple<double, double>>> steps;
+        for (int i = 0; i < num_robots; i++){
+            steps.push_back(std::vector<std::tuple<double, double>>{});
+            for (int j = 0; j < num_robots; j++){
+                // use the transpose of speed_for_freq
+                double add_x = -1 * speed_for_freq[j][i] * cos(std::get<0>(angle_and_time[i])) * std::get<1>(angle_and_time[i]);
+                double add_y = -1 * speed_for_freq[j][i] * sin(std::get<0>(angle_and_time[i])) * std::get<1>(angle_and_time[i]);
+
+                steps[i].push_back(std::make_tuple(add_x, add_y));
+            }
+        }
+        // now, scale the steps, so that for each frequency, the maximum step is rrt_step_size
+        for (int i = 0; i < num_robots; i++){
+            double max_step = 0;
+            for (int j = 0; j < num_robots; j++){
+                double step = std::max(
+                    std::abs(std::get<0>(steps[i][j])),
+                    std::abs(std::get<1>(steps[i][j]))
+                );
+                if (step > max_step){
+                    max_step = step;
+                }
+            }
+            for (int j = 0; j < num_robots; j++){
+                std::get<0>(steps[i][j]) = std::get<0>(steps[i][j]) * rrt_step_size / max_step;
+                std::get<1>(steps[i][j]) = std::get<1>(steps[i][j]) * rrt_step_size / max_step;
+            }
+        }
+        // print steps
+        /*
+        std::cout << "steps" << std::endl;
+        for (int i = 0; i < steps.size(); i++){
+            for (int j = 0; j < steps[i].size(); j++){
+                std::cout << " (" << std::get<0>(steps[i][j]) << "," << std::get<1>(steps[i][j]) << ") ";
+            }
+            std::cout << std::endl;
+        }
+        */
+        
+        bool is_there_collision = false;
+        std::vector<double> applied_times;
+        for (int i = 0; i < num_robots; i++){
+            applied_times.push_back(0);
+        }
+        bool moved = true;
+        while(moved){
+            moved = false;
+            for(int i = 0; i < num_robots; i++){
+                // apply each frequency until the time is reached or there is a collision
+                //std::cout << "applied_times[" << i << "] = " << applied_times[i] << std::endl;
+                std::vector<std::vector<double>> before_intermediate_configuration;
+                for (int j = 0; j < num_robots; j++){
+                    before_intermediate_configuration.push_back(std::vector<double>{
+                        std::get<0>(tree[nearest_node_index])[j][0],
+                        std::get<0>(tree[nearest_node_index])[j][1]
+                    });
+                };
+                std::vector<std::vector<double>> intermediate_configuration;
+                for (int j = 0; j < num_robots; j++){
+                    intermediate_configuration.push_back(std::vector<double>{
+                        std::get<0>(tree[nearest_node_index])[j][0],
+                        std::get<0>(tree[nearest_node_index])[j][1]
+                    });
+                };
+                while(applied_times[i] < std::get<1>(angle_and_time[i])){
+                    for(int j = 0; j < num_robots; j++){
+                        double new_x = intermediate_configuration[j][0] + std::get<0>(steps[i][j]);
+                        double new_y = intermediate_configuration[j][1] + std::get<1>(steps[i][j]);
+
+                        intermediate_configuration[j] = std::vector<double>{
+                            new_x,
+                            new_y
+                        };
+                    }
+
+                    is_there_collision = check_for_collision(intermediate_configuration, img);
+                    if (is_there_collision){
+                        break;
+                    }
+
+                    // I think so?
+                    applied_times[i] += 1;
+
+                    //std::cout << "moved in frequency " << i << "in time " << applied_times[i] << std::endl;
+                    //for (int j = 0; j < num_robots; j++){
+                    //    std::cout << " (" << std::get<0>(steps[i][j]) << "," << std::get<1>(steps[i][j]) << ") ";
+                    //}
+                    moved = true;
+                    // copy intermediate_configuration to before_intermediate_configuration
+                    for (int j = 0; j < num_robots; j++){
+                        before_intermediate_configuration[j] = std::vector<double>{
+                            intermediate_configuration[j][0],
+                            intermediate_configuration[j][1]
+                        };
+                    };
+                }
+                if (is_there_collision){
+                    // if there is a collision, use the before_intermediate_configuration
+                    tree.push_back(std::make_tuple(before_intermediate_configuration, nearest_node_index));
+                }
+                else{
+                    // if there is no collision, use the intermediate_configuration
+                    tree.push_back(std::make_tuple(intermediate_configuration, nearest_node_index));
+                }
+                nearest_node_index = node_id;
+                node_id++;
+            }
+
+            // here check if the goal is reached
+            double distance_to_goal = 0;
+            for (int i = 0; i < num_robots; i++){
+                distance_to_goal += 
+                    std::pow(
+                        std::get<0>(tree[nearest_node_index])[i][0] 
+                        - 
+                        random_configuration[i][0], 2
+                    ) 
+                    + 
+                    std::pow(
+                        std::get<0>(tree[nearest_node_index])[i][1]
+                        - 
+                        random_configuration[i][1], 2
+                );
+            }
+            if (distance_to_goal < rrt_step_size){
+                return true;
+            }
+
+        }
+
         return false;
     }
 
@@ -382,7 +537,7 @@ std::tuple<std::vector<std::tuple<std::vector<std::vector<double>>, int>>, std::
             //std::cout << "random_configuration: " << random_configuration[0][0] << ", " << random_configuration[0][1] << std::endl;
             //std::cout << "random_configuration: " << random_configuration[1][0] << ", " << random_configuration[1][1] << std::endl;
 
-            bool found_way_1 = extend_tree(
+            bool found_way_1 = extend_tree_second_v(
                 return_list,
                 speed_for_freq,
                 angle_and_time,
@@ -394,7 +549,8 @@ std::tuple<std::vector<std::tuple<std::vector<std::vector<double>>, int>>, std::
                 num_robots
             );
 
-            bool found_way_2 = extend_tree(
+            
+            bool found_way_2 = extend_tree_second_v(
                 goal_return_list,
                 speed_for_freq,
                 goal_angle_and_time,
@@ -410,8 +566,7 @@ std::tuple<std::vector<std::tuple<std::vector<std::vector<double>>, int>>, std::
                 std::cout << "Found a way" << std::endl;
                 break;
             }
-           
-
+            
         }
         
         // end the timer and print the time
