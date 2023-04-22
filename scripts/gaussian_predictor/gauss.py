@@ -17,37 +17,64 @@ def score_gaussian(x, mu, std):
     for _ in range(SAMPLE_COUNT):
         sample = np.random.normal(mu, std)
         diff = abs(sample - x)
+        # if the difference between angles is greater than pi, then we need to subtract 2pi from the difference
+        if diff > np.pi:
+            diff -= 2*np.pi
         avg_diff += diff
         
     avg_diff /= SAMPLE_COUNT
-    
     return avg_diff
-        
-def gaussian_fit(thetas):
-    scores = []
-    for sublist in thetas:
-        #print("sublist: ", sublist)
-        # tale the previous GAUSSIAN_DATA_COUNT number of data points, do a gaussian fit
-        for i in range(0, len(sublist) - GAUSSIAN_DATA_COUNT - 1):
-            curr_data = sublist[i:i+GAUSSIAN_DATA_COUNT]
-            #print("curr_data: ", curr_data)
-            mu, std = norm.fit(curr_data)
-            #print("mu: ", mu, "std: ", std)
-            
-            next_theta = sublist[i+GAUSSIAN_DATA_COUNT]
-            
-            score = score_gaussian(next_theta, mu, std)
-            
-            scores.append(score)
-            
-    avg_score = np.mean(scores)
-    return avg_score
-    
-def predict_next_theta(thetas):
-    mu, std = norm.fit(thetas)
-    
-    next_theta = np.random.normal(mu, std)
-    return next_theta
+
+def arrange_data(data_by_image):
+    # we need to go backwards
+    # we need to take a look at TrackObjects_ParentObjectNumber_15, to see what the parent is
+    # and ObjectNumber to see what the object's number is
+    datas = []
+    arr_index = 0
+
+    # take the data_by_image so that every row that has image number 25 is in the dataframe, others are not
+    first_image = data_by_image[data_by_image['ImageNumber'] == 25]
+    for _, object in first_image.iterrows():
+        #print(i, object)
+        temp_dict = {}
+        temp_dict['ImageNumber'] = 25
+        temp_dict['ObjectNumber'] = object['ObjectNumber']
+        temp_dict["center_x"] = object['AreaShape_Center_X']
+        temp_dict["center_y"] = object['AreaShape_Center_Y']
+
+        datas.append([])
+        datas[arr_index].append(temp_dict)
+
+        object_number = object['TrackObjects_ParentObjectNumber_15']
+
+        # traversing everything image by image would be better, but it would be a lot more complicated to write
+        # just do it this way for now
+
+        j = 24
+        #print("\n\n\n\n\n")
+        while j > 0:
+            #print("current image number: ", j)
+            #print("current object number: ", object_number)
+            temp_dict = {}
+            temp_object = data_by_image.loc[(data_by_image['ImageNumber'] == j) & (data_by_image['ObjectNumber'] == object_number)]
+            # if the data is the empty dataframe, then we have reached the end of the chain
+            if temp_object.empty:
+                break
+
+            temp_dict['ImageNumber'] = j
+            temp_dict['ObjectNumber'] = object_number
+            temp_dict["center_x"] = temp_object['AreaShape_Center_X'].iloc[0]
+            temp_dict["center_y"] = temp_object['AreaShape_Center_Y'].iloc[0]
+
+            datas[arr_index].append(temp_dict)
+            #print(temp_dict)
+
+            object_number = temp_object['TrackObjects_ParentObjectNumber_15'].iloc[0]
+            j -= 1
+
+        arr_index += 1
+
+    return datas
 
 def gaussian_prediction(data):
     # sort it by image number key
@@ -85,15 +112,21 @@ def gaussian_prediction(data):
             data[i+GAUSSIAN_DATA_COUNT]['center_y'] - data[i+GAUSSIAN_DATA_COUNT-1]['center_y'],
             data[i+GAUSSIAN_DATA_COUNT]['center_x'] - data[i+GAUSSIAN_DATA_COUNT-1]['center_x']
         )
+        next_velocity_theta_change = next_velocity_theta - velocity_theta[-1]
         
         mu, std = norm.fit(velocity_theta_change)
-        print("mu: ", mu, "std: ", std)
+        #print("mu: ", mu, "std: ", std)
         
-        score = score_gaussian(next_velocity_theta, mu, std)
+        score = score_gaussian(next_velocity_theta_change, mu, std)
         scores.append(score)
         
     # return the average of the scores
-    return np.mean(scores)
+    sum_score = 0
+    for score in scores:
+        sum_score += score
+    if len(scores) == 0:
+        return None
+    return sum_score / len(scores)
     
 def extract_theta_and_positions(datas):
     theta_data = []
@@ -213,7 +246,7 @@ def analyze_data(thetas):
         all_data = [item for sublist in all_data for item in sublist]
         # plot a bar graph of the data
         plt.hist(all_data)
-        plt.title(f"Theta occurences with previous theta between {previous_origin - previous_deviation} and {previous_origin + previous_deviation}")
+        plt.title(f"dTheta occurences with previous dtheta between {previous_origin - previous_deviation} and {previous_origin + previous_deviation}")
         plt.ylabel('Number of occurrence')
         plt.xlabel("Theta difference (radians)")
         plt.savefig(f"theta_occurences_{previous_origin}.png")
@@ -277,15 +310,28 @@ def predict_and_plot(position, theta):
 
 if __name__ == '__main__':
     df = pd.read_csv('../../IdentifyPrimaryObjects.csv')
-    #data_by_image = df.groupby('ImageNumber').agg(pd.DataFrame)
-    # set the index to be the image number
-    # groupby the dataframe by using imagenumber, and make the result a list of dataframes, and then reset the index
+    
+    # conver the data into a list of dictionaries
+    datas = arrange_data(df)
+    #print("data: ", datas)
+    
+    avg_score = 0
+    for data in datas:
+        score = gaussian_prediction(data)
+        if score is None:
+            continue
+        avg_score += score
+    avg_score /= len(datas)
+    print("average score: ", avg_score)
+        
+        
+    """
     datas = arrange_data(df)
     
     theta, position = extract_theta_and_positions(datas)
     
     predict_and_plot(position, theta)
-
+    """
     
     
     
