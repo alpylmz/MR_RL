@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 GAUSSIAN_DATA_COUNT = 5
 SAMPLE_COUNT = 100
+CONFIDENCE_PERCENTAGE = 0.70
 
 pd.options.display.max_columns = 100
 
@@ -24,57 +24,6 @@ def score_gaussian(x, mu, std):
         
     avg_diff /= SAMPLE_COUNT
     return avg_diff
-
-def arrange_data(data_by_image):
-    # we need to go backwards
-    # we need to take a look at TrackObjects_ParentObjectNumber_15, to see what the parent is
-    # and ObjectNumber to see what the object's number is
-    datas = []
-    arr_index = 0
-
-    # take the data_by_image so that every row that has image number 25 is in the dataframe, others are not
-    first_image = data_by_image[data_by_image['ImageNumber'] == 25]
-    for _, object in first_image.iterrows():
-        #print(i, object)
-        temp_dict = {}
-        temp_dict['ImageNumber'] = 25
-        temp_dict['ObjectNumber'] = object['ObjectNumber']
-        temp_dict["center_x"] = object['AreaShape_Center_X']
-        temp_dict["center_y"] = object['AreaShape_Center_Y']
-
-        datas.append([])
-        datas[arr_index].append(temp_dict)
-
-        object_number = object['TrackObjects_ParentObjectNumber_15']
-
-        # traversing everything image by image would be better, but it would be a lot more complicated to write
-        # just do it this way for now
-
-        j = 24
-        #print("\n\n\n\n\n")
-        while j > 0:
-            #print("current image number: ", j)
-            #print("current object number: ", object_number)
-            temp_dict = {}
-            temp_object = data_by_image.loc[(data_by_image['ImageNumber'] == j) & (data_by_image['ObjectNumber'] == object_number)]
-            # if the data is the empty dataframe, then we have reached the end of the chain
-            if temp_object.empty:
-                break
-
-            temp_dict['ImageNumber'] = j
-            temp_dict['ObjectNumber'] = object_number
-            temp_dict["center_x"] = temp_object['AreaShape_Center_X'].iloc[0]
-            temp_dict["center_y"] = temp_object['AreaShape_Center_Y'].iloc[0]
-
-            datas[arr_index].append(temp_dict)
-            #print(temp_dict)
-
-            object_number = temp_object['TrackObjects_ParentObjectNumber_15'].iloc[0]
-            j -= 1
-
-        arr_index += 1
-
-    return datas
 
 def gaussian_prediction(data):
     # sort it by image number key
@@ -99,6 +48,7 @@ def gaussian_prediction(data):
         #print("velocity y: ", velocity_y)
         
         velocity_theta = np.arctan2(velocity_y, velocity_x)
+        print("velocity theta: ", velocity_theta)
         # limit the range of the theta to be between -pi and pi
         for j in range(len(velocity_theta)):
             if velocity_theta[j] > np.pi:
@@ -162,7 +112,6 @@ def extract_theta_and_positions(datas):
     
     return theta_data, position_data
     
-
 def arrange_data(data_by_image):
     # we need to go backwards
     # we need to take a look at TrackObjects_ParentObjectNumber_15, to see what the parent is
@@ -214,44 +163,6 @@ def arrange_data(data_by_image):
     
     return datas
 
-def analyze_data(thetas):
-    
-    previous_deviation = 0.14
-    
-    for previous_origin in [x for x in np.arange(-3.00, 3.00, previous_deviation)]:
-        all_data = []
-        for sublist in thetas:
-            i = 0
-            all_data.append([])
-            while i < (len(sublist) - 2):
-                # find the theta diff
-                theta_diff = sublist[i+1] - sublist[i]
-                if theta_diff > np.pi:
-                    theta_diff -= 2*np.pi
-                elif theta_diff < -np.pi:
-                    theta_diff += 2*np.pi
-                    
-                if theta_diff > (previous_origin - previous_deviation) and theta_diff < (previous_origin + previous_deviation):
-                    #print("theta diff: ", theta_diff)
-                    theta_diff2 = sublist[i+2] - sublist[i+1]
-                    if theta_diff2 > np.pi:
-                        theta_diff2 -= 2*np.pi
-                    elif theta_diff2 < -np.pi:
-                        theta_diff2 += 2*np.pi
-                    all_data[-1].append(theta_diff2)
-                
-                i += 1
-    
-        # flatten the list
-        all_data = [item for sublist in all_data for item in sublist]
-        # plot a bar graph of the data
-        plt.hist(all_data)
-        plt.title(f"dTheta occurences with previous dtheta between {previous_origin - previous_deviation} and {previous_origin + previous_deviation}")
-        plt.ylabel('Number of occurrence')
-        plt.xlabel("Theta difference (radians)")
-        plt.savefig(f"theta_occurences_{previous_origin}.png")
-        plt.clf()
-
 def predict_and_plot(position, theta):
     
     i = 0
@@ -272,11 +183,36 @@ def predict_and_plot(position, theta):
             
             x = x[:-1]
             y = y[:-1]
+            print("positions: ", x, y)
             plt.plot(x, y, 'bo-')
+            
+            # calculate speeds for each of the points
+            speeds = []
+            for k in range(len(x)-1):
+                speed = np.sqrt((x[k+1] - x[k])**2 + (y[k+1] - y[k])**2)
+                speeds.append(speed)
+            
+            print("speeds: ", speeds)
+            speed_mu, speed_std = norm.fit(speeds)
+            
+            # confidence_interval = mean +- z_score * std/sqrt(n)
+            # we have n = GAUSSIAN_DATA_COUNT
+            # calculate confidence interval using CONFIDENCE_PERCENTAGE
+            # https://www.simplypsychology.org/z-score.html
+            # go for %68.26 confidence interval
+            # it is mean +- std
+            min_speed = speed_mu - speed_std
+            max_speed = speed_mu + speed_std
+            print("speed mu: ", speed_mu)
+            print("speed std: ", speed_std)
+            print("min speed: ", min_speed)
+            print("max speed: ", max_speed)
+            
             
             # now, get the theta data corresponding to the position data
             temp_theta = [theta[i][j+k] for k in range(GAUSSIAN_DATA_COUNT)]
             print("theta: ", temp_theta)
+            last_theta = temp_theta[-1]
             # now get the difference between consecutive theta
             temp_theta = [temp_theta[k+1] - temp_theta[k] for k in range(len(temp_theta)-1)]
             print("theta diff: ", temp_theta)
@@ -284,17 +220,115 @@ def predict_and_plot(position, theta):
             mu, std = norm.fit(temp_theta)
             
             next_theta_diff = np.random.normal(mu, std)
+            min_next_theta_diff = mu - std
+            max_next_theta_diff = mu + std
+            plt.plot(
+                [
+                    x[-1], 
+                    x[-1] + np.cos(last_theta + mu) * max_speed
+                ], 
+                [
+                    y[-1], 
+                    y[-1] + np.sin(last_theta + mu) * max_speed
+                ], 'k')
+            print("angle mu: ", mu)
+            print("angle std: ", std)
+            print("min angle diff: ", min_next_theta_diff)
+            print("max angle diff: ", max_next_theta_diff)
+            
+            min_next_theta = theta[i][j+GAUSSIAN_DATA_COUNT-1] + min_next_theta_diff
+            max_next_theta = theta[i][j+GAUSSIAN_DATA_COUNT-1] + max_next_theta_diff
+            
             next_theta = theta[i][j+GAUSSIAN_DATA_COUNT-1] + next_theta_diff
             
-            # draw a line from the last position, to a direction of next_theta, with a length of 1
-            next_position = (x[-1] + np.cos(next_theta), y[-1] + np.sin(next_theta))
-            next_position_mean = (x[-1] + np.cos(mu), y[-1] + np.sin(mu))
+            # calculate 4 possible next positions using min and max speeds and min and max next thetas
+            min_min_next_position = [
+                x[-1] + np.cos(min_next_theta) * min_speed,
+                y[-1] + np.sin(min_next_theta) * min_speed
+            ]
+            min_max_next_position = [
+                x[-1] + np.cos(max_next_theta) * min_speed,
+                y[-1] + np.sin(max_next_theta) * min_speed 
+            ]
+            max_min_next_position = [
+                x[-1] + np.cos(min_next_theta) * max_speed,
+                y[-1] + np.sin(min_next_theta) * max_speed
+            ]
+            max_max_next_position = [
+                x[-1] + np.cos(max_next_theta) * max_speed,
+                y[-1] + np.sin(max_next_theta) * max_speed
+            ]
+            print("min min next position: ", min_min_next_position)
+            print("min max next position: ", min_max_next_position)
+            print("max min next position: ", max_min_next_position)
+            print("max max next position: ", max_max_next_position)
             
-            print("x: ", (x[-1], y[-1]))
-            print("next position: ", next_position)
+            # draw the 4 possible next positions
+            plt.plot(
+                [
+                min_min_next_position[0],
+                max_min_next_position[0],
+            ],
+                [
+                min_min_next_position[1],
+                max_min_next_position[1],
+            ], "r")
+            # draw an arc from max_min to max_max, center is given in x[-1], y[-1]
+            arc_angle_min = min_next_theta
+            arc_angle_max = max_next_theta
+            arc_angles = np.linspace(arc_angle_min, arc_angle_max, 100)
+            arc_xs = [x[-1] + np.cos(arc_angle) * max_speed for arc_angle in arc_angles]
+            arc_ys = [y[-1] + np.sin(arc_angle) * max_speed for arc_angle in arc_angles]
+            plt.plot(arc_xs, arc_ys, "r")
+            """
+            plt.plot(
+                [
+                max_min_next_position[0],
+                max_max_next_position[0],
+            ],
+                [
+                max_min_next_position[1],
+                max_max_next_position[1],
+            ], "r")
+            """
+            plt.plot(
+                [
+                max_max_next_position[0],
+                min_max_next_position[0],
+            ],
+                [
+                max_max_next_position[1],
+                min_max_next_position[1],
+            ], "r")
+            
+            arc_xs = [x[-1] + np.cos(arc_angle) * min_speed for arc_angle in arc_angles]
+            arc_ys = [y[-1] + np.sin(arc_angle) * min_speed for arc_angle in arc_angles]
+            plt.plot(arc_xs, arc_ys, "r")
+            
+            """
+            plt.plot(
+                [
+                min_max_next_position[0],
+                min_min_next_position[0],
+            ],
+                [
+                min_max_next_position[1],
+                min_min_next_position[1],
+            ], "r")
+            """
+            
+            
+            # draw a line from the last position, to a direction of next_theta, with a length of 1
+            next_position_actual = (x[-1] + np.cos(next_theta), y[-1] + np.sin(next_theta))
+            next_position_mean = [
+                x[-1] + np.cos(next_theta) * speed_mu,
+                y[-1] + np.sin(next_theta) * speed_mu
+            ]
+            
+            print("next position: ", next_position_actual)
 
             plt.title(f"Std: {std}")
-            plt.plot([x[-1], next_position_mean[0]], [y[-1], next_position_mean[1]], 'ro-')
+            #plt.plot([x[-1], next_position_mean[0]], [y[-1], next_position_mean[1]], 'ro-')
             #plt.plot([x[-1], next_position[0]], [y[-1], next_position[1]], 'ro-')
             
             # draw the last x and y
@@ -302,19 +336,18 @@ def predict_and_plot(position, theta):
             
             j += 1
             
-            plt.savefig(f"prediction_std: {std}.png")
-        
+            plt.savefig(f"interval_plot_std:{std}.png")
+            #plt.show()
         i += 1
     
     
-
 if __name__ == '__main__':
     df = pd.read_csv('../../IdentifyPrimaryObjects.csv')
     
     # conver the data into a list of dictionaries
     datas = arrange_data(df)
     #print("data: ", datas)
-    
+    """
     avg_score = 0
     for data in datas:
         score = gaussian_prediction(data)
@@ -323,15 +356,10 @@ if __name__ == '__main__':
         avg_score += score
     avg_score /= len(datas)
     print("average score: ", avg_score)
+    """ 
         
-        
-    """
-    datas = arrange_data(df)
-    
     theta, position = extract_theta_and_positions(datas)
     
     predict_and_plot(position, theta)
-    """
-    
     
     
